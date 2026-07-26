@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 const COOKIE_NAME = "current_league_id";
@@ -21,10 +22,25 @@ function normalizeLeague(
   return Array.isArray(leagues) ? (leagues[0] ?? null) : leagues;
 }
 
-export async function getActiveLeague(): Promise<ActiveLeague | null> {
+// Dédupliqué par requête : NavBar et la page appellent toutes les deux
+// getActiveLeague sur chaque navigation.
+export const getActiveLeague = cache(async (): Promise<ActiveLeague | null> => {
   const supabase = await createClient();
   const cookieStore = await cookies();
   const cookieLeagueId = cookieStore.get(COOKIE_NAME)?.value;
+
+  // Chemin rapide : la plupart des navigations ont déjà le cookie, donc
+  // une seule lecture indexée sur leagues.id suffit (RLS vérifie toujours
+  // l'appartenance — un cookie invalide/périmé ne renvoie simplement rien
+  // et on retombe sur la requête complète ci-dessous).
+  if (cookieLeagueId) {
+    const { data } = await supabase
+      .from("leagues")
+      .select("id, name, invite_token")
+      .eq("id", cookieLeagueId)
+      .maybeSingle();
+    if (data) return data;
+  }
 
   const { data: memberships } = await supabase
     .from("league_members")
@@ -34,12 +50,8 @@ export async function getActiveLeague(): Promise<ActiveLeague | null> {
 
   if (!memberships || memberships.length === 0) return null;
 
-  const match = cookieLeagueId
-    ? memberships.find((m) => m.league_id === cookieLeagueId)
-    : undefined;
-
-  return normalizeLeague((match ?? memberships[0]).leagues);
-}
+  return normalizeLeague(memberships[0].leagues);
+});
 
 export async function setActiveLeagueId(leagueId: string) {
   const cookieStore = await cookies();

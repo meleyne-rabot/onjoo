@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { getMyPlayer } from "@/lib/player";
 import { Logo } from "@/components/Logo";
@@ -12,10 +12,7 @@ export default async function PlayerSetupPage() {
   const existing = await getMyPlayer(league.id);
   if (existing) redirect("/games");
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const suggestedName =
     (user?.user_metadata?.full_name as string | undefined) ??

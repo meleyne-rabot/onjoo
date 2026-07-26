@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { InviteLink } from "@/components/InviteLink";
@@ -10,10 +10,8 @@ export default async function PlayersPage() {
   const league = await getActiveLeague();
   if (!league) redirect("/leagues/new");
 
+  const user = await getCurrentUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data: players } = await supabase
     .from("players")

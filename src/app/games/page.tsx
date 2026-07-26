@@ -11,27 +11,32 @@ export default async function GamesPage() {
   const league = await getActiveLeague();
   if (!league) redirect("/leagues/new");
 
-  const myPlayer = await getMyPlayer(league.id);
+  const supabase = await createClient();
+
+  // Les 3 requêtes sont indépendantes une fois la ligue connue : en
+  // parallèle plutôt qu'en série, et un seul aller-retour pour les
+  // compteurs de parties (par game_code) plutôt qu'une requête par jeu.
+  const [myPlayer, gamesResult, matchesResult] = await Promise.all([
+    getMyPlayer(league.id),
+    supabase
+      .from("games")
+      .select("code, name, active")
+      .order("active", { ascending: false })
+      .order("name", { ascending: true }),
+    supabase.from("matches").select("game_code").eq("league_id", league.id),
+  ]);
+
   if (!myPlayer) redirect("/players/setup");
 
-  const supabase = await createClient();
-  const { data: games } = await supabase
-    .from("games")
-    .select("code, name, active")
-    .order("active", { ascending: false })
-    .order("name", { ascending: true });
+  const matchCounts = new Map<string, number>();
+  for (const match of matchesResult.data ?? []) {
+    matchCounts.set(match.game_code, (matchCounts.get(match.game_code) ?? 0) + 1);
+  }
 
-  const gamesWithCounts = await Promise.all(
-    (games ?? []).map(async (game) => {
-      if (!game.active) return { ...game, count: 0 };
-      const { count } = await supabase
-        .from("matches")
-        .select("id", { count: "exact", head: true })
-        .eq("league_id", league.id)
-        .eq("game_code", game.code);
-      return { ...game, count: count ?? 0 };
-    }),
-  );
+  const gamesWithCounts = (gamesResult.data ?? []).map((game) => ({
+    ...game,
+    count: matchCounts.get(game.code) ?? 0,
+  }));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-10">

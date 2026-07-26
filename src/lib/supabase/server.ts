@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -25,3 +26,14 @@ export async function createClient() {
     },
   );
 }
+
+// Dédupliqué par requête (React cache) : le layout (NavBar) et la page
+// appellent souvent tous les deux "qui est connecté ?" — sans ça, chaque
+// navigation refaisait cet appel plusieurs fois en série.
+export const getCurrentUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});

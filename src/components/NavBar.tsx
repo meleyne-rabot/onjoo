@@ -1,16 +1,12 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
 import { Logo } from "@/components/Logo";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { getActiveLeague } from "@/lib/league";
 
 export async function NavBar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) return null;
 
   // Pas de ligue active = onboarding pas terminé (écran "Crée ta ligue" /
