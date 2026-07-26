@@ -95,8 +95,9 @@ create index match_players_match_id_idx on match_players (match_id);
 insert into games (code, name, active) values
   ('qwirkle', 'Qwirkle', true),
   ('uno', 'Uno', false),
-  ('flip7', 'Flip 7', false),
-  ('ascenseur', 'Ascenseur', false);
+  ('flip7', 'Flip Seven', false),
+  ('ascenseur', 'Ascenseur', false),
+  ('skyjo', 'Skyjo', false);
 
 -- ============================================================
 -- Trigger : le créateur d'une ligue en devient admin automatiquement
