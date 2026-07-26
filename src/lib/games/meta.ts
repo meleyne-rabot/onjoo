@@ -3,7 +3,7 @@
 export const GAME_META: Record<string, { label: string; accent: string }> = {
   qwirkle: { label: "Qwirkle", accent: "#2F6FB2" },
   uno: { label: "Uno", accent: "#DE5A34" },
-  flip7: { label: "Flip Seven", accent: "#E9A23B" },
+  flip7: { label: "Flip 7", accent: "#E9A23B" },
   ascenseur: { label: "Ascenseur", accent: "#5C3A73" },
   skyjo: { label: "Skyjo", accent: "#8A9A6E" },
 };
