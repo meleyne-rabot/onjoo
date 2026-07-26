@@ -182,15 +182,20 @@ export function QwirkleScoreScreen({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-8">
-      <header className="flex items-center justify-between">
-        <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">
-          Qwirkle — Tour {currentRoundIndex}
-        </h1>
-        <span className="badge">Total partie : {matchTotal}</span>
+      <header className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">
+            Qwirkle — Tour {currentRoundIndex}
+          </h1>
+          <span className="badge">Total partie : {matchTotal}</span>
+        </div>
+        <p className="font-quicksand text-sm text-[#777]">
+          Entre le score de chaque joueur pour ce tour, puis valide.
+        </p>
       </header>
 
       <section className="flex flex-col gap-4">
-        {participants.map((participant) => (
+        {participants.map((participant, index) => (
           <div key={participant.id} className="card flex items-center gap-4">
             <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} />
             <div className="flex flex-1 flex-col">
@@ -205,26 +210,33 @@ export function QwirkleScoreScreen({
                   } probable${qwirkleCounts[participant.id] > 1 ? "s" : ""}`}
               </span>
             </div>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={inputs[participant.id] ?? ""}
-              onChange={(event) =>
-                setInputs((current) => ({
-                  ...current,
-                  [participant.id]: event.target.value,
-                }))
-              }
-              placeholder="0"
-              className="input-field w-20 text-center text-xl"
-            />
+            <div className="flex flex-col items-center gap-1">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                autoFocus={index === 0}
+                value={inputs[participant.id] ?? ""}
+                onChange={(event) =>
+                  setInputs((current) => ({
+                    ...current,
+                    [participant.id]: event.target.value,
+                  }))
+                }
+                placeholder="0"
+                className="input-field w-20 text-center text-xl"
+              />
+              <span className="font-quicksand text-[10px] uppercase tracking-wide text-[#999]">
+                Ce tour
+              </span>
+            </div>
           </div>
         ))}
       </section>
 
       <div className="flex flex-col gap-3">
         <button onClick={submitRound} disabled={isPending} className="btn-primary">
-          Valider le tour
+          Valider le tour {currentRoundIndex}
         </button>
         <div className="flex gap-3">
           <button

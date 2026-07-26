@@ -15,6 +15,12 @@ const quicksand = Quicksand({
   subsets: ["latin"],
 });
 
+// Edge Runtime : démarrage quasi instantané (pas de cold start de
+// conteneur Node comme en serverless classique) — appliqué à toute
+// l'app, seules les routes qui déclarent explicitement leur propre
+// runtime (ex. /icon) y échappent.
+export const runtime = "edge";
+
 export const metadata: Metadata = {
   title: "Onjoo",
   description: "On joue ? Scores et historique des jeux de société en famille.",
