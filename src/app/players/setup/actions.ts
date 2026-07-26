@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
+import { getMyPlayer } from "@/lib/player";
 import { randomAvatar } from "@/lib/avatar";
 
 export async function createMyPlayer(formData: FormData) {
@@ -11,6 +12,11 @@ export async function createMyPlayer(formData: FormData) {
 
   const league = await getActiveLeague();
   if (!league) redirect("/leagues/new");
+
+  // Idempotent : un double-clic sur "Continuer" ne doit pas créer
+  // plusieurs fiches pour la même personne.
+  const existing = await getMyPlayer(league.id);
+  if (existing) redirect("/games");
 
   const supabase = await createClient();
   const {
