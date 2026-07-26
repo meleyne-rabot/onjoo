@@ -10,7 +10,7 @@ create extension if not exists "pgcrypto";
 create table leagues (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  invite_token text not null unique default encode(gen_random_bytes(9), 'base64'),
+  invite_token text not null unique default replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_'),
   created_at timestamptz not null default now(),
   created_by uuid not null references auth.users (id)
 );
