@@ -53,18 +53,29 @@ create table matches (
   created_at timestamptz not null default now()
 );
 
+-- match_players identifie un participant d'une partie : soit un joueur du
+-- roster (player_id), soit un invité éphémère saisi juste pour cette partie
+-- (guest_name, aucune fiche players créée, pas de stats accumulées).
 create table match_players (
+  id uuid primary key default gen_random_uuid(),
   match_id uuid not null references matches (id) on delete cascade,
-  player_id uuid not null references players (id) on delete cascade,
+  player_id uuid references players (id) on delete cascade,
+  guest_name text,
   final_score integer,
   is_winner boolean not null default false,
-  primary key (match_id, player_id)
+  constraint match_players_player_or_guest check (
+    (player_id is not null and guest_name is null) or
+    (player_id is null and guest_name is not null)
+  )
 );
 
+-- rounds référence match_players (pas players directement) : un joueur
+-- éphémère n'a pas de ligne players, mais a toujours une ligne match_players
+-- pour cette partie.
 create table rounds (
   id uuid primary key default gen_random_uuid(),
   match_id uuid not null references matches (id) on delete cascade,
-  player_id uuid not null references players (id) on delete cascade,
+  match_player_id uuid not null references match_players (id) on delete cascade,
   round_index integer not null,
   detail jsonb not null default '{}'::jsonb,
   points integer not null,
@@ -72,6 +83,7 @@ create table rounds (
 );
 
 create index rounds_match_id_idx on rounds (match_id);
+create index rounds_match_player_id_idx on rounds (match_player_id);
 create index players_league_id_idx on players (league_id);
 create index matches_league_id_idx on matches (league_id);
 create index match_players_match_id_idx on match_players (match_id);

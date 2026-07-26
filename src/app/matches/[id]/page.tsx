@@ -1,12 +1,18 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GAME_REGISTRY, isSupportedGame } from "@/lib/games/registry";
+import { GUEST_PLACEHOLDER_AVATAR } from "@/lib/avatar";
 
-type PlayerRow = {
-  id: string;
+type PlayerJoin = {
   name: string;
   avatar_color: string;
   avatar_shape: string;
+};
+
+type MatchPlayerRow = {
+  id: string;
+  guest_name: string | null;
+  players: PlayerJoin | PlayerJoin[] | null;
 };
 
 export default async function MatchPage({
@@ -28,7 +34,9 @@ export default async function MatchPage({
   if (!isSupportedGame(match.game_code)) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6 text-center">
-        <p>Ce jeu n&apos;est pas encore pris en charge.</p>
+        <p className="font-quicksand text-[#777]">
+          Ce jeu n&apos;est pas encore pris en charge.
+        </p>
       </main>
     );
   }
@@ -36,25 +44,40 @@ export default async function MatchPage({
   const [{ data: matchPlayers }, { data: rounds }] = await Promise.all([
     supabase
       .from("match_players")
-      .select("player_id, players(id, name, avatar_color, avatar_shape)")
+      .select("id, guest_name, players(name, avatar_color, avatar_shape)")
       .eq("match_id", id),
     supabase
       .from("rounds")
-      .select("id, player_id, round_index, points")
+      .select("id, match_player_id, round_index, points")
       .eq("match_id", id)
       .order("round_index", { ascending: true }),
   ]);
 
-  const players: PlayerRow[] = (matchPlayers ?? [])
-    .map((mp) => (Array.isArray(mp.players) ? mp.players[0] : mp.players))
-    .filter((p): p is PlayerRow => Boolean(p));
+  const participants = ((matchPlayers ?? []) as MatchPlayerRow[]).map((mp) => {
+    const player = Array.isArray(mp.players) ? mp.players[0] : mp.players;
+    if (player) {
+      return {
+        id: mp.id,
+        name: player.name,
+        avatarColor: player.avatar_color,
+        avatarShape: player.avatar_shape,
+      };
+    }
+    return {
+      id: mp.id,
+      name: mp.guest_name ?? "Invité",
+      avatarColor: GUEST_PLACEHOLDER_AVATAR.color,
+      avatarShape: GUEST_PLACEHOLDER_AVATAR.shape,
+    };
+  });
 
   const { ScoreScreen } = GAME_REGISTRY[match.game_code];
 
   return (
     <ScoreScreen
       matchId={match.id}
-      players={players}
+      gameCode={match.game_code}
+      participants={participants}
       initialRounds={rounds ?? []}
       initialStatus={match.status as "in_progress" | "completed"}
     />

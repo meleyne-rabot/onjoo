@@ -26,8 +26,10 @@ export default async function JoinLeaguePage({
   if (error || !leagueId) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-bold">Lien invalide</h1>
-        <p className="text-neutral-500">
+        <h1 className="font-fredoka text-2xl font-bold text-onjoo-green-900">
+          Lien invalide
+        </h1>
+        <p className="font-quicksand text-[#777]">
           Ce lien d&apos;invitation n&apos;est plus valide.
         </p>
       </main>
@@ -35,5 +37,5 @@ export default async function JoinLeaguePage({
   }
 
   await setActiveLeagueId(leagueId);
-  redirect("/players");
+  redirect("/games");
 }

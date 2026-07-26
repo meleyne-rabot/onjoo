@@ -17,9 +17,9 @@ export function InviteLink({ token }: { token: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-neutral-300 px-4 py-3">
+    <div className="input-field flex items-center gap-2">
       <span
-        className="flex-1 truncate text-sm text-neutral-600"
+        className="flex-1 truncate font-quicksand text-sm text-[#666]"
         suppressHydrationWarning
       >
         {url || "Génération du lien..."}
@@ -27,7 +27,7 @@ export function InviteLink({ token }: { token: string }) {
       <button
         type="button"
         onClick={copy}
-        className="shrink-0 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm text-white"
+        className="shrink-0 rounded-lg bg-onjoo-green-900 px-3 py-1.5 font-quicksand text-sm font-semibold text-white"
       >
         {copied ? "Copié !" : "Copier"}
       </button>

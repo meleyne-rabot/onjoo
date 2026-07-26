@@ -26,3 +26,10 @@ export function randomAvatar(): { color: AvatarColor; shape: AvatarShape } {
     shape: AVATAR_SHAPES[Math.floor(Math.random() * AVATAR_SHAPES.length)],
   };
 }
+
+// Avatar neutre pour un joueur éphémère (pas de fiche players, donc pas
+// de couleur/forme choisie à la création).
+export const GUEST_PLACEHOLDER_AVATAR = {
+  color: "#9a9284",
+  shape: "circle" as AvatarShape,
+};

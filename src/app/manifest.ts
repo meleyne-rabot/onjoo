@@ -7,9 +7,14 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "On joue ? Scores et historique des jeux de société en famille.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#171717",
-    // TODO: remplacer par une vraie icône Onjoo (192x192 + 512x512) avant d'installer l'app sur un téléphone
-    icons: [],
+    background_color: "#FAF1DE",
+    theme_color: "#163D2E",
+    icons: [
+      {
+        src: "/icon",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
   };
 }

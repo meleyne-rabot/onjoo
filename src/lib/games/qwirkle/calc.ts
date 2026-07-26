@@ -1,6 +1,6 @@
 export type Round = {
   id: string;
-  player_id: string;
+  match_player_id: string;
   round_index: number;
   points: number;
 };
@@ -15,27 +15,28 @@ export function isLikelyQwirkle(points: number): boolean {
 
 export function cumulativeTotals(
   rounds: Round[],
-  playerIds: string[],
+  matchPlayerIds: string[],
 ): Record<string, number> {
   const totals: Record<string, number> = Object.fromEntries(
-    playerIds.map((id) => [id, 0]),
+    matchPlayerIds.map((id) => [id, 0]),
   );
   for (const round of rounds) {
-    totals[round.player_id] = (totals[round.player_id] ?? 0) + round.points;
+    totals[round.match_player_id] =
+      (totals[round.match_player_id] ?? 0) + round.points;
   }
   return totals;
 }
 
 export function estimatedQwirkleCounts(
   rounds: Round[],
-  playerIds: string[],
+  matchPlayerIds: string[],
 ): Record<string, number> {
   const counts: Record<string, number> = Object.fromEntries(
-    playerIds.map((id) => [id, 0]),
+    matchPlayerIds.map((id) => [id, 0]),
   );
   for (const round of rounds) {
     if (isLikelyQwirkle(round.points)) {
-      counts[round.player_id] = (counts[round.player_id] ?? 0) + 1;
+      counts[round.match_player_id] = (counts[round.match_player_id] ?? 0) + 1;
     }
   }
   return counts;

@@ -14,21 +14,23 @@ import {
   type Round,
 } from "./calc";
 
-type PlayerLite = {
-  id: string;
+type Participant = {
+  id: string; // match_players.id
   name: string;
-  avatar_color: string;
-  avatar_shape: string;
+  avatarColor: string;
+  avatarShape: string;
 };
 
 export function QwirkleScoreScreen({
   matchId,
-  players,
+  gameCode,
+  participants,
   initialRounds,
   initialStatus,
 }: {
   matchId: string;
-  players: PlayerLite[];
+  gameCode: string;
+  participants: Participant[];
   initialRounds: Round[];
   initialStatus: "in_progress" | "completed";
 }) {
@@ -39,11 +41,14 @@ export function QwirkleScoreScreen({
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
 
-  const playerIds = useMemo(() => players.map((p) => p.id), [players]);
+  const participantIds = useMemo(
+    () => participants.map((p) => p.id),
+    [participants],
+  );
 
   const [winners, setWinners] = useState<string[] | null>(
     initialStatus === "completed"
-      ? determineWinners(cumulativeTotals(initialRounds, playerIds))
+      ? determineWinners(cumulativeTotals(initialRounds, participantIds))
       : null,
   );
 
@@ -85,18 +90,18 @@ export function QwirkleScoreScreen({
     };
   }, [supabase, matchId]);
 
-  const totals = cumulativeTotals(rounds, playerIds);
-  const qwirkleCounts = estimatedQwirkleCounts(rounds, playerIds);
+  const totals = cumulativeTotals(rounds, participantIds);
+  const qwirkleCounts = estimatedQwirkleCounts(rounds, participantIds);
   const matchTotal = totalMatchPoints(rounds);
   const currentRoundIndex = nextRoundIndex(rounds);
   const lastIndex = lastRoundIndex(rounds);
 
   function submitRound() {
-    const rows = players.map((player) => ({
+    const rows = participants.map((participant) => ({
       match_id: matchId,
-      player_id: player.id,
+      match_player_id: participant.id,
       round_index: currentRoundIndex,
-      points: Number(inputs[player.id] ?? 0) || 0,
+      points: Number(inputs[participant.id] ?? 0) || 0,
     }));
 
     startTransition(async () => {
@@ -120,15 +125,14 @@ export function QwirkleScoreScreen({
     const finalWinners = determineWinners(totals);
     startTransition(async () => {
       await Promise.all(
-        players.map((player) =>
+        participants.map((participant) =>
           supabase
             .from("match_players")
             .update({
-              final_score: totals[player.id] ?? 0,
-              is_winner: finalWinners.includes(player.id),
+              final_score: totals[participant.id] ?? 0,
+              is_winner: finalWinners.includes(participant.id),
             })
-            .eq("match_id", matchId)
-            .eq("player_id", player.id),
+            .eq("id", participant.id),
         ),
       );
       await supabase
@@ -145,26 +149,30 @@ export function QwirkleScoreScreen({
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
         <p className="text-6xl">🎉</p>
-        <h1 className="text-3xl font-bold">
+        <h1 className="font-fredoka text-3xl font-bold text-onjoo-green-900">
           {winners.length > 1 ? "Égalité !" : "Victoire !"}
         </h1>
         <div className="flex flex-wrap justify-center gap-6">
-          {players
+          {participants
             .filter((p) => winners.includes(p.id))
             .map((p) => (
               <div key={p.id} className="flex flex-col items-center gap-2">
-                <AvatarBadge color={p.avatar_color} shape={p.avatar_shape} size={64} />
-                <span className="text-lg font-semibold">{p.name}</span>
-                <span className="text-neutral-500">{totals[p.id]} points</span>
+                <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={64} />
+                <span className="font-fredoka text-lg font-semibold text-onjoo-green-900">
+                  {p.name}
+                </span>
+                <span className="font-quicksand text-[#777]">
+                  {totals[p.id]} points
+                </span>
               </div>
             ))}
         </div>
-        <p className="text-neutral-500">
+        <p className="font-quicksand text-[#777]">
           Total de points de la partie : {matchTotal}
         </p>
         <button
-          onClick={() => router.push("/matches")}
-          className="rounded-xl bg-neutral-900 px-6 py-3 text-lg font-medium text-white"
+          onClick={() => router.push(`/games/${gameCode}`)}
+          className="btn-primary"
         >
           Voir l&apos;historique
         </button>
@@ -175,66 +183,61 @@ export function QwirkleScoreScreen({
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-8">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Qwirkle — Tour {currentRoundIndex}</h1>
-        <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm text-neutral-600">
-          Total partie : {matchTotal}
-        </span>
+        <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">
+          Qwirkle — Tour {currentRoundIndex}
+        </h1>
+        <span className="badge">Total partie : {matchTotal}</span>
       </header>
 
       <section className="flex flex-col gap-4">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className="flex items-center gap-4 rounded-xl border border-neutral-200 p-4"
-          >
-            <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} />
+        {participants.map((participant) => (
+          <div key={participant.id} className="card flex items-center gap-4">
+            <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} />
             <div className="flex flex-1 flex-col">
-              <span className="text-lg font-medium">{player.name}</span>
-              <span className="text-sm text-neutral-500">
-                Total : {totals[player.id] ?? 0}
-                {(qwirkleCounts[player.id] ?? 0) > 0 &&
-                  ` · ${qwirkleCounts[player.id]} Qwirkle${
-                    qwirkleCounts[player.id] > 1 ? "s" : ""
-                  } probable${qwirkleCounts[player.id] > 1 ? "s" : ""}`}
+              <span className="font-quicksand text-lg font-medium text-onjoo-green-900">
+                {participant.name}
+              </span>
+              <span className="font-quicksand text-sm text-[#777]">
+                Total : {totals[participant.id] ?? 0}
+                {(qwirkleCounts[participant.id] ?? 0) > 0 &&
+                  ` · ${qwirkleCounts[participant.id]} Qwirkle${
+                    qwirkleCounts[participant.id] > 1 ? "s" : ""
+                  } probable${qwirkleCounts[participant.id] > 1 ? "s" : ""}`}
               </span>
             </div>
             <input
               type="number"
               inputMode="numeric"
-              value={inputs[player.id] ?? ""}
+              value={inputs[participant.id] ?? ""}
               onChange={(event) =>
                 setInputs((current) => ({
                   ...current,
-                  [player.id]: event.target.value,
+                  [participant.id]: event.target.value,
                 }))
               }
               placeholder="0"
-              className="w-20 rounded-xl border border-neutral-300 px-3 py-3 text-center text-xl"
+              className="input-field w-20 text-center text-xl"
             />
           </div>
         ))}
       </section>
 
       <div className="flex flex-col gap-3">
-        <button
-          onClick={submitRound}
-          disabled={isPending}
-          className="rounded-xl bg-neutral-900 px-4 py-4 text-lg font-semibold text-white disabled:opacity-50"
-        >
+        <button onClick={submitRound} disabled={isPending} className="btn-primary">
           Valider le tour
         </button>
         <div className="flex gap-3">
           <button
             onClick={undoLastRound}
             disabled={isPending || lastIndex === null}
-            className="flex-1 rounded-xl border border-neutral-300 px-4 py-3 font-medium disabled:opacity-40"
+            className="btn-secondary flex-1"
           >
             Annuler le dernier tour
           </button>
           <button
             onClick={finishMatch}
             disabled={isPending || rounds.length === 0}
-            className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-medium text-white disabled:opacity-40"
+            className="btn-primary flex-1"
           >
             Terminer la partie
           </button>

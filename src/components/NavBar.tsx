@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
+import { Logo } from "@/components/Logo";
+import { MobileTabBar } from "@/components/MobileTabBar";
 
 export async function NavBar() {
   const supabase = await createClient();
@@ -11,20 +13,45 @@ export async function NavBar() {
   if (!user) return null;
 
   return (
-    <nav className="flex items-center justify-between border-b border-neutral-200 px-6 py-3">
-      <Link href="/matches" className="font-bold">
-        Onjoo
-      </Link>
-      <div className="flex items-center gap-4 text-sm">
-        <Link href="/matches">Historique</Link>
-        <Link href="/matches/new">Nouvelle partie</Link>
-        <Link href="/players">Joueurs</Link>
-        <form action={signOut}>
-          <button type="submit" className="text-neutral-500">
-            Déconnexion
-          </button>
-        </form>
+    <>
+      <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+        <nav className="mx-auto flex max-w-3xl items-center justify-between gap-4 rounded-2xl border border-[#eee] bg-white px-4 py-3 sm:gap-5 sm:px-5 sm:py-3.5">
+          <Link href="/games">
+            <Logo variant="nav" />
+          </Link>
+          <div className="hidden items-center gap-7 sm:flex">
+            <Link
+              href="/games"
+              className="font-fredoka text-[15px] font-semibold text-onjoo-green-900 no-underline"
+            >
+              Nos jeux
+            </Link>
+            <Link
+              href="/players"
+              className="font-fredoka text-[15px] font-semibold text-onjoo-green-900 no-underline"
+            >
+              Joueurs
+            </Link>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Link
+              href="/games"
+              className="hidden rounded-[10px] bg-onjoo-green-900 px-[18px] py-[9px] font-fredoka text-sm font-semibold text-white sm:inline-block"
+            >
+              + Partie
+            </Link>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="font-quicksand text-xs font-semibold text-neutral-400"
+              >
+                Déconnexion
+              </button>
+            </form>
+          </div>
+        </nav>
       </div>
-    </nav>
+      <MobileTabBar />
+    </>
   );
 }
