@@ -37,5 +37,5 @@ export default async function JoinLeaguePage({
   }
 
   await setActiveLeagueId(leagueId);
-  redirect("/games");
+  redirect("/players/setup");
 }

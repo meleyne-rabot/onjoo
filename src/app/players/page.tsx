@@ -11,9 +11,13 @@ export default async function PlayersPage() {
   if (!league) redirect("/leagues/new");
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data: players } = await supabase
     .from("players")
-    .select("id, name, avatar_color, avatar_shape, is_guest")
+    .select("id, name, avatar_color, avatar_shape, is_guest, linked_user_id")
     .eq("league_id", league.id)
     .eq("archived", false)
     .order("created_at", { ascending: true });
@@ -30,19 +34,25 @@ export default async function PlayersPage() {
       </header>
 
       <section className="flex flex-col gap-3">
-        {(players ?? []).map((player) => (
-          <div key={player.id} className="card flex items-center gap-3">
-            <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} />
-            <div className="flex flex-col">
-              <span className="font-quicksand text-lg font-medium text-onjoo-green-900">
-                {player.name}
-              </span>
-              {player.is_guest && (
-                <span className="font-quicksand text-xs text-[#777]">Invité</span>
-              )}
+        {(players ?? []).map((player) => {
+          const isMe = player.linked_user_id === user?.id;
+          return (
+            <div key={player.id} className="card flex items-center gap-3">
+              <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} />
+              <div className="flex flex-col">
+                <span className="font-quicksand text-lg font-medium text-onjoo-green-900">
+                  {player.name}
+                </span>
+                {isMe && (
+                  <span className="font-quicksand text-xs text-[#777]">Toi</span>
+                )}
+                {!isMe && player.is_guest && (
+                  <span className="font-quicksand text-xs text-[#777]">Invité</span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {(players ?? []).length === 0 && (
           <p className="font-quicksand text-neutral-500">
             Aucun joueur pour l&apos;instant.

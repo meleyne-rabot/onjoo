@@ -23,5 +23,5 @@ export async function createLeague(formData: FormData) {
   }
 
   await setActiveLeagueId(leagueId);
-  redirect("/games");
+  redirect("/players/setup");
 }

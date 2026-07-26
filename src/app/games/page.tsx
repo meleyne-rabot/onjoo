@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
+import { getMyPlayer } from "@/lib/player";
 import { gameInitials, gameMeta } from "@/lib/games/meta";
 
 const INACTIVE_TILE_COLOR = "#c9c2b0";
@@ -9,6 +10,9 @@ const INACTIVE_TILE_COLOR = "#c9c2b0";
 export default async function GamesPage() {
   const league = await getActiveLeague();
   if (!league) redirect("/leagues/new");
+
+  const myPlayer = await getMyPlayer(league.id);
+  if (!myPlayer) redirect("/players/setup");
 
   const supabase = await createClient();
   const { data: games } = await supabase
