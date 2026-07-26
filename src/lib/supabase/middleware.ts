@@ -41,5 +41,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Un utilisateur déjà connecté qui atterrit sur /login (session encore
+  // valide, lien revisité...) doit être renvoyé dans l'app plutôt que de
+  // revoir l'écran de connexion.
+  if (user && request.nextUrl.pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
   return supabaseResponse;
 }

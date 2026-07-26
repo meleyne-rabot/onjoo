@@ -121,6 +121,32 @@ create trigger on_league_created
   for each row execute function handle_new_league();
 
 -- ============================================================
+-- RPC : créer une ligue
+-- ============================================================
+-- Évite de dépendre d'un INSERT ... RETURNING côté client, qui exige que
+-- la ligne passe aussi la policy de lecture leagues_select_member —
+-- laquelle dépend du trigger ci-dessus ayant déjà écrit dans
+-- league_members. En SECURITY DEFINER, la fonction contourne cette
+-- dépendance et renvoie directement l'id.
+
+create function create_league(league_name text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_league_id uuid;
+begin
+  insert into leagues (name, created_by)
+  values (league_name, auth.uid())
+  returning id into new_league_id;
+
+  return new_league_id;
+end;
+$$;
+
+-- ============================================================
 -- RPC : rejoindre une ligue via son token d'invitation
 -- ============================================================
 

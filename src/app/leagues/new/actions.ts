@@ -14,16 +14,14 @@ export async function createLeague(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data, error } = await supabase
-    .from("leagues")
-    .insert({ name, created_by: user.id })
-    .select("id")
-    .single();
+  const { data: leagueId, error } = await supabase.rpc("create_league", {
+    league_name: name,
+  });
 
-  if (error || !data) {
+  if (error || !leagueId) {
     throw new Error(error?.message ?? "league_create_failed");
   }
 
-  await setActiveLeagueId(data.id);
+  await setActiveLeagueId(leagueId);
   redirect("/games");
 }

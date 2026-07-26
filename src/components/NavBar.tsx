@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
 import { Logo } from "@/components/Logo";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { getActiveLeague } from "@/lib/league";
 
 export async function NavBar() {
   const supabase = await createClient();
@@ -11,6 +12,12 @@ export async function NavBar() {
   } = await supabase.auth.getUser();
 
   if (!user) return null;
+
+  // Pas de ligue active = onboarding pas terminé (écran "Crée ta ligue" /
+  // "Rejoindre") : les liens de nav (Nos jeux, Joueurs) n'ont pas encore
+  // de sens tant qu'on n'est pas "dans" une ligue.
+  const league = await getActiveLeague();
+  if (!league) return null;
 
   return (
     <>
