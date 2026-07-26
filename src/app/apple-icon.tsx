@@ -1,13 +1,14 @@
 import { ImageResponse } from "next/og";
 import { loadFredokaBold, OnjooIconMark } from "@/lib/onjoo-icon";
 
-export const size = { width: 512, height: 512 };
+// Taille recommandée par Apple pour l'icône "Ajouter à l'écran d'accueil".
+export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-export default async function Icon() {
+export default async function AppleIcon() {
   const fredokaBold = await loadFredokaBold();
 
-  return new ImageResponse(<OnjooIconMark canvasSize={512} />, {
+  return new ImageResponse(<OnjooIconMark canvasSize={180} />, {
     ...size,
     fonts: [
       {
