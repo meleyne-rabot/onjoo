@@ -1,15 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/Logo";
-
-function buildConfirmUrl() {
-  const next = new URLSearchParams(window.location.search).get("next");
-  const confirmUrl = new URL("/auth/confirm", window.location.origin);
-  if (next) confirmUrl.searchParams.set("next", next);
-  return confirmUrl.toString();
-}
 
 function GoogleLogo() {
   return (
@@ -35,32 +28,19 @@ function GoogleLogo() {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
-  const [googlePending, setGooglePending] = useState(false);
+  const [pending, setPending] = useState(false);
 
   async function handleGoogleSignIn() {
-    setGooglePending(true);
+    setPending(true);
     const supabase = createClient();
+    const next = new URLSearchParams(window.location.search).get("next");
+    const confirmUrl = new URL("/auth/confirm", window.location.origin);
+    if (next) confirmUrl.searchParams.set("next", next);
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: buildConfirmUrl() },
+      options: { redirectTo: confirmUrl.toString() },
     });
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("sending");
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: buildConfirmUrl() },
-    });
-
-    setStatus(error ? "error" : "sent");
   }
 
   return (
@@ -77,53 +57,15 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={googlePending}
-          className="flex items-center justify-center gap-3 rounded-xl border-2 border-[#ddd4bd] bg-white px-4 py-3 font-fredoka text-base font-semibold text-onjoo-green-900 disabled:opacity-50"
-        >
-          <GoogleLogo />
-          {googlePending ? "Redirection..." : "Continuer avec Google"}
-        </button>
-
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-[#ddd4bd]" />
-          <span className="font-quicksand text-sm text-[#999]">ou</span>
-          <div className="h-px flex-1 bg-[#ddd4bd]" />
-        </div>
-
-        {status === "sent" ? (
-          <p className="text-center font-quicksand text-base text-onjoo-green-900">
-            Un lien de connexion vient d&apos;être envoyé à <strong>{email}</strong>.
-            Ouvre-le depuis ce téléphone pour te connecter.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <input
-              type="email"
-              required
-              placeholder="ton@email.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="input-field"
-            />
-            <button
-              type="submit"
-              disabled={status === "sending"}
-              className="btn-secondary"
-            >
-              {status === "sending" ? "Envoi..." : "Recevoir un lien par email"}
-            </button>
-            {status === "error" && (
-              <p className="text-center font-quicksand text-onjoo-red-500">
-                Un problème est survenu, réessaie dans un instant.
-              </p>
-            )}
-          </form>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={pending}
+        className="flex w-full max-w-sm items-center justify-center gap-3 rounded-xl border-2 border-[#ddd4bd] bg-white px-4 py-3 font-fredoka text-base font-semibold text-onjoo-green-900 disabled:opacity-50"
+      >
+        <GoogleLogo />
+        {pending ? "Redirection..." : "Continuer avec Google"}
+      </button>
     </main>
   );
 }
