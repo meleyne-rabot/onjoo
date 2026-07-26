@@ -16,11 +16,17 @@ export async function getMyPlayer(leagueId: string): Promise<MyPlayer | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // .limit(1) avant .maybeSingle() : si jamais plusieurs fiches existent
+  // pour ce compte (ex. double-clic passé), on prend la plus ancienne au
+  // lieu de faire planter la requête (.maybeSingle() seul erreure sur
+  // plusieurs lignes).
   const { data } = await supabase
     .from("players")
     .select("id, name, avatar_color, avatar_shape")
     .eq("league_id", leagueId)
     .eq("linked_user_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   return data;
