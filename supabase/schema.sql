@@ -168,11 +168,27 @@ create policy "leagues_select_member" on leagues
 create policy "leagues_insert_self" on leagues
   for insert with check (created_by = auth.uid());
 
--- league_members: visible si on est soi-même le membre, ou membre de la même ligue
+-- league_members: visible si on est soi-même le membre, ou membre de la même ligue.
+-- Passe par une fonction SECURITY DEFINER pour la sous-requête : une policy
+-- qui interroge sa propre table directement provoque une récursion infinie
+-- ("infinite recursion detected in policy for relation league_members").
+create function is_league_member(target_league_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from league_members
+    where league_id = target_league_id and user_id = auth.uid()
+  );
+$$;
+
 create policy "league_members_select" on league_members
   for select using (
     user_id = auth.uid()
-    or league_id in (select league_id from league_members where user_id = auth.uid())
+    or is_league_member(league_id)
   );
 
 -- pas de policy insert/update/delete directe : passe par le trigger (création) ou le RPC join_league_by_token (SECURITY DEFINER)
