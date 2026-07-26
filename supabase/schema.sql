@@ -63,6 +63,9 @@ create table match_players (
   guest_name text,
   final_score integer,
   is_winner boolean not null default false,
+  -- true si ce joueur a vidé son chevalet en premier (bonus +6 en fin de
+  -- partie, cf. section 4 du spec Qwirkle).
+  finished_board boolean not null default false,
   constraint match_players_player_or_guest check (
     (player_id is not null and guest_name is null) or
     (player_id is null and guest_name is not null)
@@ -71,7 +74,9 @@ create table match_players (
 
 -- rounds référence match_players (pas players directement) : un joueur
 -- éphémère n'a pas de ligne players, mais a toujours une ligne match_players
--- pour cette partie.
+-- pour cette partie. unique(match_player_id, round_index) permet un upsert
+-- propre : chaque cellule du tableau de score se sauvegarde indépendamment
+-- à la saisie, sans dupliquer de ligne si le joueur corrige sa valeur.
 create table rounds (
   id uuid primary key default gen_random_uuid(),
   match_id uuid not null references matches (id) on delete cascade,
@@ -79,7 +84,8 @@ create table rounds (
   round_index integer not null,
   detail jsonb not null default '{}'::jsonb,
   points integer not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (match_player_id, round_index)
 );
 
 create index rounds_match_id_idx on rounds (match_id);

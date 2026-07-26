@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { PlayerPicker } from "@/components/PlayerPicker";
+import { GameIcon } from "@/components/GameIcon";
 import { gameMeta } from "@/lib/games/meta";
 import { addGuestPlayer, createMatch } from "./actions";
 
@@ -34,14 +35,14 @@ export default async function NewMatchPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-8 px-6 py-10">
-      <div>
-        <p className="font-quicksand text-sm text-[#777]">{game.name}</p>
-        <h1
-          className="font-fredoka text-2xl font-bold"
-          style={{ color: meta.accent }}
-        >
-          Nouvelle partie
-        </h1>
+      <div className="flex items-center gap-3">
+        <GameIcon category={meta.category} />
+        <div>
+          <p className="font-quicksand text-sm text-[#777]">{game.name}</p>
+          <h1 className="font-fredoka text-2xl font-bold text-onjoo-green-900">
+            Nouvelle partie
+          </h1>
+        </div>
       </div>
 
       <form action={addGuestPlayer} className="card flex flex-col gap-3">

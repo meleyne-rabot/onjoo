@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { gameMeta } from "@/lib/games/meta";
+import { GameIcon } from "@/components/GameIcon";
 
 type MatchPlayerRow = {
   final_score: number | null;
@@ -48,16 +49,16 @@ export default async function GameHistoryPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-10">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <Link href="/games" className="font-quicksand text-sm text-[#777]">
-            ← Nos jeux
-          </Link>
-          <h1
-            className="font-fredoka text-2xl font-bold"
-            style={{ color: meta.accent }}
-          >
-            {game.name}
-          </h1>
+        <div className="flex items-center gap-3">
+          <GameIcon category={meta.category} />
+          <div className="flex flex-col gap-1">
+            <Link href="/games" className="font-quicksand text-sm text-[#777]">
+              ← Nos jeux
+            </Link>
+            <h1 className="font-fredoka text-2xl font-bold text-onjoo-green-900">
+              {game.name}
+            </h1>
+          </div>
         </div>
         <Link href={`/games/${code}/new`} className="btn-primary shrink-0">
           Nouvelle partie

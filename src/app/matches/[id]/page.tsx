@@ -41,21 +41,26 @@ export default async function MatchPage({
     );
   }
 
-  const [{ data: matchPlayers, error: matchPlayersError }, { data: rounds }] =
-    await Promise.all([
-      supabase
-        .from("match_players")
-        .select("id, guest_name, players(name, avatar_color, avatar_shape)")
-        .eq("match_id", id),
-      supabase
-        .from("rounds")
-        .select("id, match_player_id, round_index, points")
-        .eq("match_id", id)
-        .order("round_index", { ascending: true }),
-    ]);
+  const [
+    { data: matchPlayers, error: matchPlayersError },
+    { data: rounds, error: roundsError },
+  ] = await Promise.all([
+    supabase
+      .from("match_players")
+      .select("id, guest_name, players(name, avatar_color, avatar_shape)")
+      .eq("match_id", id),
+    supabase
+      .from("rounds")
+      .select("id, match_player_id, round_index, points, detail")
+      .eq("match_id", id)
+      .order("round_index", { ascending: true }),
+  ]);
 
   if (matchPlayersError) {
     throw new Error(matchPlayersError.message);
+  }
+  if (roundsError) {
+    throw new Error(roundsError.message);
   }
 
   const participants = ((matchPlayers ?? []) as MatchPlayerRow[]).map((mp) => {

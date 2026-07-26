@@ -1,17 +1,16 @@
-// Couleurs de tuile — pas de vrais logos de jeux (photos de boîtes écartées,
-// jurent avec le langage graphique en aplats de la charte).
-export const GAME_META: Record<string, { label: string; accent: string }> = {
-  qwirkle: { label: "Qwirkle", accent: "#2F6FB2" },
-  uno: { label: "Uno", accent: "#DE5A34" },
-  flip7: { label: "Flip 7", accent: "#E9A23B" },
-  ascenseur: { label: "Ascenseur", accent: "#5C3A73" },
-  skyjo: { label: "Skyjo", accent: "#8A9A6E" },
+import type { GameCategory } from "@/components/GameIcon";
+
+// Icônes de catégorie (pion/dé/carte, vocabulaire du logo) en attendant
+// de vrais logos de jeux — photos de boîtes écartées, jurent avec le
+// langage graphique en aplats de la charte.
+export const GAME_META: Record<string, { label: string; category: GameCategory }> = {
+  qwirkle: { label: "Qwirkle", category: "tuiles" },
+  uno: { label: "Uno", category: "cartes" },
+  flip7: { label: "Flip 7", category: "cartes" },
+  ascenseur: { label: "Ascenseur", category: "cartes" },
+  skyjo: { label: "Skyjo", category: "cartes" },
 };
 
 export function gameMeta(code: string) {
-  return GAME_META[code] ?? { label: code, accent: "#8A9A6E" };
-}
-
-export function gameInitials(label: string): string {
-  return label.slice(0, 2).toUpperCase();
+  return GAME_META[code] ?? { label: code, category: "cartes" as GameCategory };
 }

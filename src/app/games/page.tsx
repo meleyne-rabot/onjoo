@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { getMyPlayer } from "@/lib/player";
-import { gameInitials, gameMeta } from "@/lib/games/meta";
-
-const INACTIVE_TILE_COLOR = "#c9c2b0";
+import { gameMeta } from "@/lib/games/meta";
+import { GameIcon } from "@/components/GameIcon";
 
 export default async function GamesPage() {
   const league = await getActiveLeague();
@@ -54,12 +53,7 @@ export default async function GamesPage() {
           const meta = gameMeta(game.code);
           const tile = (
             <>
-              <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-fredoka text-lg font-bold text-white"
-                style={{ background: game.active ? meta.accent : INACTIVE_TILE_COLOR }}
-              >
-                {gameInitials(meta.label)}
-              </div>
+              <GameIcon category={meta.category} />
               <div className="flex flex-col gap-0.5">
                 <span
                   className="font-fredoka text-base font-semibold"
@@ -80,7 +74,7 @@ export default async function GamesPage() {
             return (
               <div
                 key={game.code}
-                className="card flex cursor-not-allowed items-center gap-4"
+                className="card flex cursor-not-allowed items-center gap-4 opacity-50"
               >
                 {tile}
               </div>

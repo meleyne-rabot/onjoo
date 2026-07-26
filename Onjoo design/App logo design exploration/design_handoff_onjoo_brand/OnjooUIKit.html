@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #f2ede2; }
+    a { color: #2F6FB2; }
+    a:hover { color: #163D2E; }
+  </style>
+</helmet>
+
+<section style="font-family: 'Quicksand', sans-serif; padding: 48px; display: flex; flex-direction: column; gap: 44px; max-width: 1040px; margin: 0 auto;">
+
+  <div>
+    <h1 style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 28px; color: #163D2E; margin: 0 0 4px;">Onjoo — Kit UI</h1>
+    <p style="font-size: 14px; color: #777; margin: 0;">Boutons, navigation, menus — basés sur la charte du logo (couleurs, Fredoka/Quicksand).</p>
+  </div>
+
+  <!-- Palette -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Couleurs</h2>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 12px; background: #163D2E;"></div><span style="font-size: 11px; color: #555;">#163D2E</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 12px; background: #E9A23B;"></div><span style="font-size: 11px; color: #555;">#E9A23B</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 12px; background: #DE5A34;"></div><span style="font-size: 11px; color: #555;">#DE5A34</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 12px; background: #2F6FB2;"></div><span style="font-size: 11px; color: #555;">#2F6FB2</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 12px; background: #5C3A73;"></div><span style="font-size: 11px; color: #555;">#5C3A73</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 12px; background: #8A9A6E;"></div><span style="font-size: 11px; color: #555;">#8A9A6E</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 12px; background: #FAF1DE; border: 1px solid #e5ddc8;"></div><span style="font-size: 11px; color: #555;">#FAF1DE</span></div>
+    </div>
+  </div>
+
+  <!-- Typography -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Typographie</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 32px; color: #163D2E;">Titre — Fredoka 700</div>
+      <div style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 20px; color: #163D2E;">Sous-titre — Fredoka 600</div>
+      <div style="font-family: 'Quicksand', sans-serif; font-weight: 500; font-size: 16px; color: #333;">Texte courant — Quicksand 500. On joue, on partage, on revoit nos parties.</div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Boutons</h2>
+    <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+      <button style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 15px; color: #fff; background: #163D2E; border: none; border-radius: 12px; padding: 12px 22px; cursor: pointer;" style-hover="background: #0f2b20;">Nouvelle partie</button>
+      <button style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 15px; color: #163D2E; background: transparent; border: 2px solid #163D2E; border-radius: 12px; padding: 10px 20px; cursor: pointer;" style-hover="background: rgba(22,61,46,0.06);">Ajouter un joueur</button>
+      <button style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 15px; color: #163D2E; background: transparent; border: none; border-radius: 12px; padding: 10px 14px; cursor: pointer;" style-hover="background: rgba(22,61,46,0.06);">Annuler</button>
+      <button style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 15px; color: #fff; background: #DE5A34; border: none; border-radius: 12px; padding: 12px 22px; cursor: pointer;" style-hover="background: #c74a27;">Supprimer</button>
+      <button disabled="" style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 15px; color: #a9a9a9; background: #e9e5da; border: none; border-radius: 12px; padding: 12px 22px; cursor: not-allowed;">Valider</button>
+    </div>
+  </div>
+
+  <!-- Nav bar -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Barre de navigation (web/app)</h2>
+    <div style="background: #fff; border: 1px solid #eee; border-radius: 16px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 40px; height: 40px; background: #FAF1DE; border-radius: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;">
+          <div style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 10px; color: #163D2E; line-height: 1;">On</div>
+          <div style="display: flex; align-items: center; gap: 1px;">
+            <span style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 13px; color: #E9A23B; line-height: 1; margin-top: -2px;">j</span>
+            <div style="width: 10px; height: 10px; background: #DE5A34; border-radius: 50%;"></div>
+            <div style="width: 10px; height: 10px; background: #2F6FB2; border-radius: 3px;"></div>
+          </div>
+        </div>
+        <span style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 20px; color: #163D2E;">Onjoo</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 28px;">
+        <a href="#" style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 15px; color: #163D2E; text-decoration: none;">Parties</a>
+        <a href="#" style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 15px; color: #163D2E; text-decoration: none;">Joueurs</a>
+        <a href="#" style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 15px; color: #163D2E; text-decoration: none;">Stats</a>
+      </div>
+      <button style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px; color: #fff; background: #163D2E; border: none; border-radius: 10px; padding: 9px 18px; cursor: pointer;">+ Partie</button>
+    </div>
+  </div>
+
+  <!-- Tab bar mobile -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Barre d'onglets (mobile)</h2>
+    <div style="width: 320px; background: #fff; border: 1px solid #eee; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: space-around;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 10px; background: rgba(22,61,46,0.08);">
+        <div style="width: 20px; height: 20px; background: #163D2E; border-radius: 6px;"></div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 11px; color: #163D2E;">Parties</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 10px;">
+        <div style="width: 20px; height: 20px; background: #c9c2b0; border-radius: 6px;"></div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 11px; color: #999;">Joueurs</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 10px;">
+        <div style="width: 20px; height: 20px; background: #c9c2b0; border-radius: 6px;"></div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 11px; color: #999;">Stats</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 10px;">
+        <div style="width: 20px; height: 20px; background: #c9c2b0; border-radius: 6px;"></div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 11px; color: #999;">Profil</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu / dropdown -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Menu déroulant / liste</h2>
+    <div style="width: 260px; background: #fff; border: 1px solid #eee; border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 2px;">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; cursor: pointer;" style-hover="background: rgba(22,61,46,0.06);">
+        <div style="width: 16px; height: 16px; background: #DE5A34; border-radius: 50%;"></div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 14px; color: #333;">Rejouer cette partie</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; cursor: pointer;" style-hover="background: rgba(22,61,46,0.06);">
+        <div style="width: 16px; height: 16px; background: #2F6FB2; border-radius: 4px;"></div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 14px; color: #333;">Voir les statistiques</span>
+      </div>
+      <div style="height: 1px; background: #eee; margin: 4px 6px;"></div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; cursor: pointer;" style-hover="background: rgba(222,90,52,0.08);">
+        <div style="width: 16px; height: 16px; background: transparent; border: 2px solid #DE5A34; border-radius: 50%;"></div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 14px; color: #DE5A34;">Supprimer</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category icons -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Icônes de catégorie de jeu</h2>
+    <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="width: 44px; height: 44px; background: #FAF1DE; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+          <div style="width: 20px; height: 26px; background: #fff; border: 2px solid #2F6FB2; border-radius: 4px; position: relative;">
+            <div style="position: absolute; top: -4px; left: -4px; width: 20px; height: 26px; background: #FAF1DE; border: 2px solid #2F6FB2; border-radius: 4px;"></div>
+          </div>
+        </div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 11px; color: #555;">Cartes</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="width: 44px; height: 44px; background: #FAF1DE; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+          <div style="width: 26px; height: 26px; background: #8A9A6E; border-radius: 3px; transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
+            <div style="width: 8px; height: 8px; background: #fff; border-radius: 2px;"></div>
+          </div>
+        </div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 11px; color: #555;">Tuiles</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="width: 44px; height: 44px; background: #FAF1DE; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <div style="width: 12px; height: 12px; background: #DE5A34; border-radius: 50%;"></div>
+            <div style="width: 20px; height: 12px; background: #DE5A34; clip-path: polygon(32% 0%, 68% 0%, 100% 100%, 0% 100%); margin-top: -2px;"></div>
+          </div>
+        </div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 11px; color: #555;">Plateau</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="width: 44px; height: 44px; background: #FAF1DE; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+          <div style="width: 24px; height: 24px; background: #2F6FB2; border-radius: 7px; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); padding: 4px; box-sizing: border-box;">
+            <div style="width: 4px; height: 4px; background: #fff; border-radius: 50%; grid-column: 1; grid-row: 1;"></div>
+            <div style="width: 4px; height: 4px; background: #fff; border-radius: 50%; grid-column: 3; grid-row: 1;"></div>
+            <div style="width: 4px; height: 4px; background: #fff; border-radius: 50%; grid-column: 2; grid-row: 2;"></div>
+            <div style="width: 4px; height: 4px; background: #fff; border-radius: 50%; grid-column: 1; grid-row: 3;"></div>
+            <div style="width: 4px; height: 4px; background: #fff; border-radius: 50%; grid-column: 3; grid-row: 3;"></div>
+          </div>
+        </div>
+        <span style="font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 11px; color: #555;">Dés</span>
+      </div>
+
+    </div>
+    <p style="font-size: 12px; color: #777; margin: 10px 0 0; max-width: 560px;">Même vocabulaire que le logo (pion, dé) réutilisé en pastille 44px, fond `#FAF1DE`, une couleur d'accent par catégorie. Ex : Skyjo/Flip7/Ascenseur/Uno → Cartes, Qwirkle → Tuiles, Yams → Dés, jeux de plateau classiques → Plateau.</p>
+  </div>
+
+  <!-- Card -->
+  <div>
+    <h2 style="font-family: 'Fredoka', sans-serif; font-size: 16px; color: #163D2E; margin: 0 0 12px;">Carte</h2>
+    <div style="width: 300px; background: #fff; border: 1px solid #eee; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 16px; color: #163D2E;">Qwirkle — Soirée du 24/07</span>
+      <span style="font-family: 'Quicksand', sans-serif; font-size: 13px; color: #777;">4 joueurs · Terminée</span>
+      <div style="display: flex; gap: 6px; margin-top: 4px;">
+        <span style="background: #FAF1DE; color: #163D2E; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 999px;">Gagnante : Léa</span>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+</x-dc>
+</body>
+</html>
