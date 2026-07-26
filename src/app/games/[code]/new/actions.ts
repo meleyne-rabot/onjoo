@@ -48,22 +48,16 @@ export async function createMatch(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: match, error } = await supabase
-    .from("matches")
-    .insert({ league_id: league.id, game_code: gameCode, created_by: user.id })
-    .select("id")
-    .single();
+  const { data: matchId, error } = await supabase.rpc("create_match", {
+    p_league_id: league.id,
+    p_game_code: gameCode,
+    p_player_ids: playerIds,
+    p_guest_names: guestNames,
+  });
 
-  if (error || !match) {
+  if (error || !matchId) {
     throw new Error(error?.message ?? "match_create_failed");
   }
 
-  const rows = [
-    ...playerIds.map((playerId) => ({ match_id: match.id, player_id: playerId })),
-    ...guestNames.map((guestName) => ({ match_id: match.id, guest_name: guestName })),
-  ];
-
-  await supabase.from("match_players").insert(rows);
-
-  redirect(`/matches/${match.id}`);
+  redirect(`/matches/${matchId}`);
 }

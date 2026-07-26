@@ -80,7 +80,7 @@ export function PlayerPicker({ players }: { players: PlayerLite[] }) {
           type="text"
           value={nameInput}
           onChange={(event) => setNameInput(event.target.value)}
-          placeholder="Nom d'un invité de passage"
+          placeholder="Nom (pour cette partie seulement)"
           className="input-field flex-1"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -90,7 +90,7 @@ export function PlayerPicker({ players }: { players: PlayerLite[] }) {
           }}
         />
         <button type="button" onClick={addEphemeral} className="btn-secondary">
-          + Invité de passage
+          + Joueur ponctuel
         </button>
       </div>
     </div>

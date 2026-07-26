@@ -147,6 +147,54 @@ end;
 $$;
 
 -- ============================================================
+-- RPC : créer une partie avec ses participants
+-- ============================================================
+-- Même raison que create_league : insérer matches puis match_players en
+-- deux appels séparés laisse une fenêtre où le deuxième insert peut
+-- échouer silencieusement (RLS ou autre) sans que le code appelant le
+-- détecte, laissant une partie orpheline sans participants. Ici tout se
+-- passe dans une seule transaction atomique, côté serveur.
+
+create function create_match(
+  p_league_id uuid,
+  p_game_code text,
+  p_player_ids uuid[],
+  p_guest_names text[]
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_match_id uuid;
+  pid uuid;
+  gname text;
+begin
+  if not exists (
+    select 1 from league_members
+    where league_id = p_league_id and user_id = auth.uid()
+  ) then
+    raise exception 'not_a_league_member';
+  end if;
+
+  insert into matches (league_id, game_code, created_by)
+  values (p_league_id, p_game_code, auth.uid())
+  returning id into new_match_id;
+
+  foreach pid in array p_player_ids loop
+    insert into match_players (match_id, player_id) values (new_match_id, pid);
+  end loop;
+
+  foreach gname in array p_guest_names loop
+    insert into match_players (match_id, guest_name) values (new_match_id, gname);
+  end loop;
+
+  return new_match_id;
+end;
+$$;
+
+-- ============================================================
 -- RPC : rejoindre une ligue via son token d'invitation
 -- ============================================================
 
