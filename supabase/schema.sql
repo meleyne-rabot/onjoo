@@ -32,7 +32,12 @@ create table players (
   is_guest boolean not null default false,
   linked_user_id uuid references auth.users (id),
   archived boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Un compte ne peut avoir qu'une seule fiche par ligue (linked_user_id
+  -- NULL, ie. les invités, ne sont pas concernés par cette contrainte).
+  -- Absente à l'origine : un double-clic ou un retry pouvait créer un
+  -- doublon, cf. incident du 27/07/2026.
+  constraint players_one_per_user_per_league unique (league_id, linked_user_id)
 );
 
 create table games (
