@@ -12,6 +12,7 @@ import {
   estimatedQwirkleCounts,
   isLikelyQwirkle,
   lastRoundIndexWithData,
+  totalQwirkleCount,
   type Round,
   type RoundDetail,
 } from "./calc";
@@ -106,6 +107,11 @@ export function QwirkleScoreScreen({
   const lastIndex = lastRoundIndexWithData(rounds);
   const isCompleted = status === "completed";
   const winners = isCompleted ? determineWinners(displayTotals) : [];
+  const totalQwirkles = totalQwirkleCount(rounds, participantIds);
+  const winnerQwirkles = winners.reduce((sum, id) => sum + (qwirkleCounts[id] ?? 0), 0);
+  const winnerQwirklePct =
+    totalQwirkles > 0 ? Math.round((winnerQwirkles / totalQwirkles) * 100) : 0;
+  const winnerPoints = winners.length > 0 ? displayTotals[winners[0]] ?? 0 : 0;
 
   function pickStarter(starterId: string) {
     const baseOrder = orderedParticipants.map((p) => p.id);
@@ -187,6 +193,19 @@ export function QwirkleScoreScreen({
                   </span>
                 </div>
               ))}
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            <span className="badge">{winnerPoints} pts</span>
+            {totalQwirkles > 0 && (
+              <span className="badge">
+                {totalQwirkles} Qwirkle{totalQwirkles > 1 ? "s" : ""} au total
+              </span>
+            )}
+            {totalQwirkles > 0 && winnerQwirkles > 0 && (
+              <span className="badge">
+                {winnerQwirklePct}% des Qwirkles pour {winners.length > 1 ? "les gagnants" : "le gagnant"}
+              </span>
+            )}
           </div>
           <button
             onClick={() => router.push(`/games/${gameCode}`)}
@@ -400,21 +419,28 @@ function ScoreCell({
 
   const numericValue = value === "" ? null : Number(value) || 0;
   const showQwirkleToggle = numericValue !== null && isLikelyQwirkle(numericValue);
+  // Coché par défaut dès 12 pts tant que le joueur n'a rien décoché
+  // explicitement (rare) : pas besoin d'un tap pour confirmer le cas
+  // courant, seulement pour l'exception.
+  const displayedQwirkle = qwirkle ?? (numericValue !== null && isLikelyQwirkle(numericValue));
 
   function commit() {
     if (value === "" || disabled) return;
     const points = Number(value) || 0;
-    const detail: RoundDetail = qwirkle !== undefined ? { qwirkle } : {};
+    const finalQwirkle = qwirkle ?? (isLikelyQwirkle(points) ? true : undefined);
+    const detail: RoundDetail = finalQwirkle !== undefined ? { qwirkle: finalQwirkle } : {};
     onSave(points, detail);
   }
 
+  // Toujours modifiable, même sur une partie terminée : corriger un Qwirkle
+  // oublié après coup ne change que `detail`, jamais les points ni le score
+  // final déjà enregistrés.
   function toggleQwirkle() {
-    if (value === "" || disabled) return;
-    const next = qwirkle === true ? undefined : true;
+    if (value === "") return;
+    const next = !displayedQwirkle;
     setQwirkle(next);
     const points = Number(value) || 0;
-    const detail: RoundDetail = next !== undefined ? { qwirkle: next } : {};
-    onSave(points, detail);
+    onSave(points, { qwirkle: next });
   }
 
   return (
