@@ -214,8 +214,8 @@ export function SkyjoScoreScreen({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-[#eee]">
-        <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden bg-[#FAF1DE]">
+      <div className="rounded-xl border border-[#eee]">
+        <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
           <div
             className="grid"
             style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
@@ -251,7 +251,7 @@ export function SkyjoScoreScreen({
           </div>
         </div>
 
-        <div ref={totalScrollRef} className="sticky bottom-0 z-20 overflow-x-hidden bg-[#FAF1DE]">
+        <div ref={totalScrollRef} className="sticky bottom-0 z-20 overflow-x-hidden rounded-b-xl bg-[#FAF1DE]">
           <div
             className="grid"
             style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
