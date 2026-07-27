@@ -5,7 +5,7 @@ import { getMyPlayer } from "@/lib/player";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { signOut } from "@/app/actions";
-import { renameLeague, switchLeague } from "./actions";
+import { leaveLeague, renameLeague, switchLeague } from "./actions";
 
 export default async function ProfilPage() {
   const league = await getActiveLeague();
@@ -32,9 +32,16 @@ export default async function ProfilPage() {
       </header>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-fredoka text-base font-semibold text-onjoo-green-900">
-          Ligue active
-        </h2>
+        <div>
+          <h2 className="font-fredoka text-base font-semibold text-onjoo-green-900">
+            Ligue active
+          </h2>
+          <p className="font-quicksand text-xs text-[#777]">
+            Une ligue regroupe les joueurs et les parties d&apos;une famille : tout
+            le monde dans la même ligue voit les mêmes joueurs et le même
+            historique.
+          </p>
+        </div>
         <form action={renameLeague} className="card flex flex-col gap-3">
           <input type="hidden" name="league_id" value={league.id} />
           <input name="name" defaultValue={league.name} className="input-field" />
@@ -58,11 +65,21 @@ export default async function ProfilPage() {
                 {l.id === league.id ? (
                   <span className="badge">Active</span>
                 ) : (
-                  <form action={switchLeague.bind(null, l.id)}>
-                    <button type="submit" className="btn-secondary">
-                      Basculer
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-2">
+                    <form action={switchLeague.bind(null, l.id)}>
+                      <button type="submit" className="btn-secondary">
+                        Basculer
+                      </button>
+                    </form>
+                    <form action={leaveLeague.bind(null, l.id)}>
+                      <button
+                        type="submit"
+                        className="font-quicksand text-xs font-semibold text-onjoo-red-500 underline"
+                      >
+                        Quitter
+                      </button>
+                    </form>
+                  </div>
                 )}
               </div>
             ))}

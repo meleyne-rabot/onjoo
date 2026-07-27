@@ -280,7 +280,11 @@ create policy "league_members_select" on league_members
     or is_league_member(league_id)
   );
 
--- pas de policy insert/update/delete directe : passe par le trigger (création) ou le RPC join_league_by_token (SECURITY DEFINER)
+-- pas de policy insert/update directe : passe par le trigger (création) ou le RPC join_league_by_token (SECURITY DEFINER)
+
+-- delete : un membre peut quitter une ligue lui-même (ex. doublon créé par erreur)
+create policy "league_members_delete_self" on league_members
+  for delete using (user_id = auth.uid());
 
 -- players
 create policy "players_select" on players
@@ -367,6 +371,19 @@ create policy "rounds_insert" on rounds
 
 create policy "rounds_delete" on rounds
   for delete using (
+    match_id in (
+      select m.id from matches m
+      join league_members lm on lm.league_id = m.league_id
+      where lm.user_id = auth.uid()
+    )
+  );
+
+-- Manquait à l'origine : sans policy update, l'upsert de saveCell()
+-- (onConflict match_player_id,round_index) échoue silencieusement dès
+-- qu'un tour existe déjà — correction de score ou toggle Qwirkle après
+-- coup restaient sans effet, sans erreur visible.
+create policy "rounds_update" on rounds
+  for update using (
     match_id in (
       select m.id from matches m
       join league_members lm on lm.league_id = m.league_id

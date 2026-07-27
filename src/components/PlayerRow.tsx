@@ -38,9 +38,9 @@ export function PlayerRow({ player, isMe }: { player: Player; isMe: boolean }) {
           setPending(false);
           setEditing(false);
         }}
-        className="card flex items-center gap-3"
+        className="card flex items-center gap-2 py-3"
       >
-        <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} />
+        <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} size={38} />
         <input
           name="name"
           defaultValue={player.name}
@@ -63,10 +63,10 @@ export function PlayerRow({ player, isMe }: { player: Player; isMe: boolean }) {
   }
 
   return (
-    <div className="card flex items-center gap-3">
-      <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} />
+    <div className="card flex items-center gap-2 py-3">
+      <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} size={38} />
       <div className="flex flex-1 flex-col">
-        <span className="font-quicksand text-lg font-medium text-onjoo-green-900">
+        <span className="font-quicksand text-base font-medium text-onjoo-green-900">
           {player.name}
         </span>
         {isMe && <span className="font-quicksand text-xs text-[#777]">Toi</span>}
@@ -79,7 +79,7 @@ export function PlayerRow({ player, isMe }: { player: Player; isMe: boolean }) {
         onClick={() => setEditing(true)}
         disabled={pending}
         aria-label={`Renommer ${player.name}`}
-        className="rounded-lg p-2 text-lg"
+        className="rounded-lg p-1.5 text-base"
       >
         ✎
       </button>
@@ -88,7 +88,7 @@ export function PlayerRow({ player, isMe }: { player: Player; isMe: boolean }) {
         onClick={handleArchive}
         disabled={pending}
         aria-label={`Supprimer ${player.name}`}
-        className="rounded-lg p-2 text-lg text-onjoo-red-500"
+        className="rounded-lg p-1.5 text-base text-onjoo-red-500"
       >
         🗑
       </button>

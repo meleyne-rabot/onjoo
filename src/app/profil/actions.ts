@@ -21,3 +21,19 @@ export async function switchLeague(leagueId: string) {
   revalidatePath("/", "layout");
   redirect("/games");
 }
+
+export async function leaveLeague(leagueId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("league_members")
+    .delete()
+    .eq("league_id", leagueId)
+    .eq("user_id", user.id);
+
+  revalidatePath("/profil");
+}

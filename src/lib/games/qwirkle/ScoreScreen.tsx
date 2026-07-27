@@ -130,10 +130,11 @@ export function QwirkleScoreScreen({
 
   function saveCell(matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) {
     startTransition(async () => {
-      await supabase.from("rounds").upsert(
+      const { error } = await supabase.from("rounds").upsert(
         { match_id: matchId, match_player_id: matchPlayerId, round_index: roundIndex, points, detail },
         { onConflict: "match_player_id,round_index" },
       );
+      if (error) console.error("saveCell failed:", error.message);
     });
   }
 
@@ -202,9 +203,7 @@ export function QwirkleScoreScreen({
               </span>
             )}
             {totalQwirkles > 0 && winnerQwirkles > 0 && (
-              <span className="badge">
-                {winnerQwirklePct}% des Qwirkles pour {winners.length > 1 ? "les gagnants" : "le gagnant"}
-              </span>
+              <span className="badge">{winnerQwirklePct}% des Qwirkles de la partie</span>
             )}
           </div>
           <button
