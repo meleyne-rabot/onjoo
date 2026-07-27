@@ -24,7 +24,11 @@ export async function createMyPlayer(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const avatar = randomAvatar();
+  const { data: existingAvatars } = await supabase
+    .from("players")
+    .select("avatar_color, avatar_shape")
+    .eq("league_id", league.id);
+  const avatar = randomAvatar(existingAvatars ?? []);
 
   await supabase.from("players").insert({
     league_id: league.id,

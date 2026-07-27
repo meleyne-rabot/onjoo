@@ -15,7 +15,11 @@ export async function addGuestPlayer(formData: FormData) {
   if (!league) return;
 
   const supabase = await createClient();
-  const avatar = randomAvatar();
+  const { data: existing } = await supabase
+    .from("players")
+    .select("avatar_color, avatar_shape")
+    .eq("league_id", league.id);
+  const avatar = randomAvatar(existing ?? []);
 
   await supabase.from("players").insert({
     league_id: league.id,

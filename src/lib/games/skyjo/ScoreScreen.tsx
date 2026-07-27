@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
@@ -44,6 +44,21 @@ export function SkyjoScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
+  // Le conteneur qui défile horizontalement devient malgré lui aussi la
+  // référence de défilement vertical (effet de bord CSS), ce qui casse
+  // le sticky top/bottom de l'en-tête et du total s'ils sont dedans. On
+  // les sort donc dans leurs propres conteneurs, ancrés sur le scroll
+  // réel de la page, et on synchronise leur défilement horizontal en JS
+  // avec celui du corps du tableau.
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const totalScrollRef = useRef<HTMLDivElement>(null);
+
+  function syncHorizontalScroll() {
+    const left = bodyScrollRef.current?.scrollLeft ?? 0;
+    if (headerScrollRef.current) headerScrollRef.current.scrollLeft = left;
+    if (totalScrollRef.current) totalScrollRef.current.scrollLeft = left;
+  }
 
   const participantIds = useMemo(
     () => participants.map((p) => p.id),
@@ -199,59 +214,69 @@ export function SkyjoScoreScreen({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-[#eee]">
-        <div
-          className="grid gap-px bg-[#eee]"
-          style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
-        >
-          <div className="sticky top-0 left-0 z-20 bg-[#FAF1DE]" />
-          {participants.map((participant) => (
-            <div
-              key={participant.id}
-              className="sticky top-0 z-10 flex flex-col items-center gap-1 bg-[#FAF1DE] px-1 py-2.5"
-            >
-              <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
-              <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
-                {participant.name}
-              </span>
-            </div>
-          ))}
-
-          {roundIndices.map((roundIndex) => (
-            <RoundRow
-              key={roundIndex}
-              roundIndex={roundIndex}
-              isActive={!isCompleted && roundIndex === activeRound}
-              disabled={isCompleted}
-              participants={participants}
-              rounds={rounds}
-              onSave={saveCell}
-            />
-          ))}
-
-          <div className="sticky bottom-0 left-0 z-20 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
-            Total
+      <div className="overflow-hidden rounded-xl border border-[#eee]">
+        <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden bg-[#FAF1DE]">
+          <div
+            className="grid"
+            style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
+          >
+            <div />
+            {participants.map((participant) => (
+              <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
+                <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
+                <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
+                  {participant.name}
+                </span>
+              </div>
+            ))}
           </div>
-          {participants.map((participant) => (
-            <div
-              key={participant.id}
-              className="sticky bottom-0 z-10 flex flex-col items-center justify-center gap-0.5 bg-[#FAF1DE] px-1 py-2.5"
-            >
-              <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
-                {totals[participant.id] ?? 0}
-              </span>
-              {overTarget.includes(participant.id) && (
-                <span className="font-quicksand text-[10px] font-bold" style={{ color: "#d64545" }}>
-                  {TARGET_SCORE}+
-                </span>
-              )}
-              {approachingTarget.includes(participant.id) && (
-                <span className="font-quicksand text-[10px] font-bold" style={{ color: "#e9a23b" }}>
-                  reste {TARGET_SCORE - (totals[participant.id] ?? 0)}
-                </span>
-              )}
+        </div>
+
+        <div ref={bodyScrollRef} onScroll={syncHorizontalScroll} className="overflow-x-auto">
+          <div
+            className="grid gap-px bg-[#eee]"
+            style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
+          >
+            {roundIndices.map((roundIndex) => (
+              <RoundRow
+                key={roundIndex}
+                roundIndex={roundIndex}
+                isActive={!isCompleted && roundIndex === activeRound}
+                disabled={isCompleted}
+                participants={participants}
+                rounds={rounds}
+                onSave={saveCell}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div ref={totalScrollRef} className="sticky bottom-0 z-20 overflow-x-hidden bg-[#FAF1DE]">
+          <div
+            className="grid"
+            style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
+          >
+            <div className="flex items-center justify-center px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
+              Total
             </div>
-          ))}
+            {participants.map((participant) => (
+              <div key={participant.id} className="flex flex-col items-center justify-center gap-0.5 px-1 py-2.5">
+                <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
+                  {totals[participant.id] ?? 0}
+                </span>
+                {overTarget.includes(participant.id) && (
+                  <span className="font-quicksand text-[10px] font-bold" style={{ color: "#d64545" }}>
+                    {TARGET_SCORE}+
+                  </span>
+                )}
+                {approachingTarget.includes(participant.id) && (
+                  <span className="font-quicksand text-[10px] font-bold" style={{ color: "#e9a23b" }}>
+                    reste {TARGET_SCORE - (totals[participant.id] ?? 0)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
@@ -50,6 +50,21 @@ export function QwirkleScoreScreen({
   const [turnOrderIds, setTurnOrderIds] = useState<string[] | null>(null);
   const [turnOrderSet, setTurnOrderSet] = useState(initialTurnOrderSet);
   const [isPending, startTransition] = useTransition();
+  // Le conteneur qui défile horizontalement devient malgré lui aussi la
+  // référence de défilement vertical (effet de bord CSS), ce qui casse
+  // le sticky top/bottom de l'en-tête et du total s'ils sont dedans. On
+  // les sort donc dans leurs propres conteneurs, ancrés sur le scroll
+  // réel de la page, et on synchronise leur défilement horizontal en JS
+  // avec celui du corps du tableau.
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const totalScrollRef = useRef<HTMLDivElement>(null);
+
+  function syncHorizontalScroll() {
+    const left = bodyScrollRef.current?.scrollLeft ?? 0;
+    if (headerScrollRef.current) headerScrollRef.current.scrollLeft = left;
+    if (totalScrollRef.current) totalScrollRef.current.scrollLeft = left;
+  }
 
   const orderedParticipants = useMemo(() => {
     if (!turnOrderIds) return participants;
@@ -251,60 +266,76 @@ export function QwirkleScoreScreen({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-[#eee]">
-        <div
-          className="grid gap-px bg-[#eee]"
-          style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
-        >
-          <div className="sticky top-0 left-0 z-20 bg-[#FAF1DE]" />
-          {orderedParticipants.map((participant) => (
-            <div
-              key={participant.id}
-              className="sticky top-0 z-10 flex flex-col items-center gap-1 bg-[#FAF1DE] px-1 py-2.5"
-            >
-              <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
-              <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
-                {participant.name}
-              </span>
-            </div>
-          ))}
-
-          {roundIndices.map((roundIndex) => (
-            <RoundRow
-              key={roundIndex}
-              roundIndex={roundIndex}
-              isActive={!isCompleted && roundIndex === activeRound}
-              disabled={isCompleted}
-              participants={orderedParticipants}
-              rounds={rounds}
-              onSave={saveCell}
-            />
-          ))}
-
-          <div className="sticky bottom-0 left-0 z-20 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
-            Total
+      <div className="overflow-hidden rounded-xl border border-[#eee]">
+        <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden bg-[#FAF1DE]">
+          <div
+            className="grid"
+            style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
+          >
+            <div />
+            {orderedParticipants.map((participant) => (
+              <div
+                key={participant.id}
+                className="flex flex-col items-center gap-1 px-1 py-2.5"
+              >
+                <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
+                <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
+                  {participant.name}
+                </span>
+              </div>
+            ))}
           </div>
-          {orderedParticipants.map((participant) => (
-            <div
-              key={participant.id}
-              className="sticky bottom-0 z-10 flex flex-col items-center justify-center gap-0.5 bg-[#FAF1DE] px-1 py-2.5"
-            >
-              <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
-                {displayTotals[participant.id] ?? 0}
-              </span>
-              {finisherId === participant.id && (
-                <span className="font-quicksand text-[10px] font-bold text-onjoo-orange-500">
-                  +6 fin
-                </span>
-              )}
-              {(qwirkleCounts[participant.id] ?? 0) > 0 && (
-                <span className="font-quicksand text-[10px] text-[#999]">
-                  {qwirkleCounts[participant.id]} Qwirkle
-                  {qwirkleCounts[participant.id] > 1 ? "s" : ""}
-                </span>
-              )}
+        </div>
+
+        <div ref={bodyScrollRef} onScroll={syncHorizontalScroll} className="overflow-x-auto">
+          <div
+            className="grid gap-px bg-[#eee]"
+            style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
+          >
+            {roundIndices.map((roundIndex) => (
+              <RoundRow
+                key={roundIndex}
+                roundIndex={roundIndex}
+                isActive={!isCompleted && roundIndex === activeRound}
+                disabled={isCompleted}
+                participants={orderedParticipants}
+                rounds={rounds}
+                onSave={saveCell}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div ref={totalScrollRef} className="sticky bottom-0 z-20 overflow-x-hidden bg-[#FAF1DE]">
+          <div
+            className="grid"
+            style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
+          >
+            <div className="flex items-center justify-center px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
+              Total
             </div>
-          ))}
+            {orderedParticipants.map((participant) => (
+              <div
+                key={participant.id}
+                className="flex flex-col items-center justify-center gap-0.5 px-1 py-2.5"
+              >
+                <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
+                  {displayTotals[participant.id] ?? 0}
+                </span>
+                {finisherId === participant.id && (
+                  <span className="font-quicksand text-[10px] font-bold text-onjoo-orange-500">
+                    +6 fin
+                  </span>
+                )}
+                {(qwirkleCounts[participant.id] ?? 0) > 0 && (
+                  <span className="font-quicksand text-[10px] text-[#999]">
+                    {qwirkleCounts[participant.id]} Qwirkle
+                    {qwirkleCounts[participant.id] > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

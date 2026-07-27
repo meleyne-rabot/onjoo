@@ -14,7 +14,11 @@ export async function addPlayer(formData: FormData) {
   if (!league) return;
 
   const supabase = await createClient();
-  const avatar = randomAvatar();
+  const { data: existing } = await supabase
+    .from("players")
+    .select("avatar_color, avatar_shape")
+    .eq("league_id", league.id);
+  const avatar = randomAvatar(existing ?? []);
 
   await supabase.from("players").insert({
     league_id: league.id,
@@ -23,6 +27,16 @@ export async function addPlayer(formData: FormData) {
     avatar_shape: avatar.shape,
     is_guest: isGuest,
   });
+
+  revalidatePath("/players");
+}
+
+export async function updatePlayerAvatar(playerId: string, color: string, shape: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("players")
+    .update({ avatar_color: color, avatar_shape: shape })
+    .eq("id", playerId);
 
   revalidatePath("/players");
 }
