@@ -248,6 +248,11 @@ create policy "leagues_select_member" on leagues
 create policy "leagues_insert_self" on leagues
   for insert with check (created_by = auth.uid());
 
+create policy "leagues_update_member" on leagues
+  for update using (
+    id in (select league_id from league_members where user_id = auth.uid())
+  );
+
 -- league_members: visible si on est soi-même le membre, ou membre de la même ligue.
 -- Passe par une fonction SECURITY DEFINER pour la sous-requête : une policy
 -- qui interroge sa propre table directement provoque une récursion infinie

@@ -37,6 +37,7 @@ export function PlayerPicker({ players }: { players: PlayerLite[] }) {
               type="checkbox"
               name="player_ids"
               value={player.id}
+              defaultChecked
               className="h-5 w-5"
             />
             <AvatarBadge

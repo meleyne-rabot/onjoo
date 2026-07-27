@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ITEMS = [
   { href: "/games", label: "Nos jeux" },
   { href: "/players", label: "Joueurs" },
+  { href: "/profil", label: "Profil" },
 ];
 
 export function MobileTabBar() {

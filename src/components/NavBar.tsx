@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { signOut } from "@/app/actions";
 import { Logo } from "@/components/Logo";
+import { AvatarBadge } from "@/components/AvatarBadge";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { getActiveLeague } from "@/lib/league";
+import { getMyPlayer } from "@/lib/player";
 
 export async function NavBar() {
   const user = await getCurrentUser();
@@ -14,6 +15,8 @@ export async function NavBar() {
   // de sens tant qu'on n'est pas "dans" une ligue.
   const league = await getActiveLeague();
   if (!league) return null;
+
+  const myPlayer = await getMyPlayer(league.id);
 
   return (
     <>
@@ -43,14 +46,15 @@ export async function NavBar() {
             >
               + Partie
             </Link>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="font-quicksand text-xs font-semibold text-neutral-400"
-              >
-                Déconnexion
-              </button>
-            </form>
+            <Link href="/profil" aria-label="Ton profil">
+              {myPlayer ? (
+                <AvatarBadge color={myPlayer.avatar_color} shape={myPlayer.avatar_shape} size={32} />
+              ) : (
+                <span className="font-quicksand text-xs font-semibold text-neutral-400">
+                  Profil
+                </span>
+              )}
+            </Link>
           </div>
         </nav>
       </div>

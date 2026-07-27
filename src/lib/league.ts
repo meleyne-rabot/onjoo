@@ -53,6 +53,23 @@ export const getActiveLeague = cache(async (): Promise<ActiveLeague | null> => {
   return normalizeLeague(memberships[0].leagues);
 });
 
+// Toutes les ligues du compte connecté (pour le sélecteur du profil) —
+// distinct de getActiveLeague qui n'en résout qu'une.
+export const getMyLeagues = cache(async (): Promise<ActiveLeague[]> => {
+  const supabase = await createClient();
+  const { data: memberships } = await supabase
+    .from("league_members")
+    .select("league_id, leagues(id, name, invite_token)")
+    .order("joined_at", { ascending: true })
+    .returns<MembershipRow[]>();
+
+  if (!memberships) return [];
+
+  return memberships
+    .map((m) => normalizeLeague(m.leagues))
+    .filter((league): league is ActiveLeague => league !== null);
+});
+
 export async function setActiveLeagueId(leagueId: string) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, leagueId, {

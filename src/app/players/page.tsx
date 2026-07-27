@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
-import { AvatarBadge } from "@/components/AvatarBadge";
 import { InviteLink } from "@/components/InviteLink";
+import { PlayerRow } from "@/components/PlayerRow";
 import { addPlayer } from "./actions";
 
 export default async function PlayersPage() {
@@ -32,25 +32,13 @@ export default async function PlayersPage() {
       </header>
 
       <section className="flex flex-col gap-3">
-        {(players ?? []).map((player) => {
-          const isMe = player.linked_user_id === user?.id;
-          return (
-            <div key={player.id} className="card flex items-center gap-3">
-              <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} />
-              <div className="flex flex-col">
-                <span className="font-quicksand text-lg font-medium text-onjoo-green-900">
-                  {player.name}
-                </span>
-                {isMe && (
-                  <span className="font-quicksand text-xs text-[#777]">Toi</span>
-                )}
-                {!isMe && player.is_guest && (
-                  <span className="font-quicksand text-xs text-[#777]">Invité</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {(players ?? []).map((player) => (
+          <PlayerRow
+            key={player.id}
+            player={player}
+            isMe={player.linked_user_id === user?.id}
+          />
+        ))}
         {(players ?? []).length === 0 && (
           <p className="font-quicksand text-neutral-500">
             Aucun joueur pour l&apos;instant.

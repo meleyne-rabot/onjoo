@@ -26,3 +26,23 @@ export async function addPlayer(formData: FormData) {
 
   revalidatePath("/players");
 }
+
+export async function renamePlayer(playerId: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+
+  const supabase = await createClient();
+  await supabase.from("players").update({ name: trimmed }).eq("id", playerId);
+
+  revalidatePath("/players");
+}
+
+// Archive plutôt que supprimer : un joueur peut avoir un historique de
+// parties (match_players → rounds en cascade) qu'on ne veut jamais
+// effacer par erreur. archived=true le retire juste des listes actives.
+export async function archivePlayer(playerId: string) {
+  const supabase = await createClient();
+  await supabase.from("players").update({ archived: true }).eq("id", playerId);
+
+  revalidatePath("/players");
+}
