@@ -441,6 +441,7 @@ function RoundRow({
               // change côté serveur (ex. correction sur un autre appareil).
               key={round ? `${round.id}-${round.points}-${round.detail?.qwirkle}` : "empty"}
               round={round}
+              participantName={participant.name}
               highlighted={isActive}
               disabled={disabled}
               onSave={(points, detail) => onSave(participant.id, roundIndex, points, detail)}
@@ -454,11 +455,13 @@ function RoundRow({
 
 function ScoreCell({
   round,
+  participantName,
   highlighted,
   disabled,
   onSave,
 }: {
   round: Round | undefined;
+  participantName: string;
   highlighted: boolean;
   disabled: boolean;
   onSave: (points: number, detail: RoundDetail) => void;
@@ -468,6 +471,10 @@ function ScoreCell({
   // donc cet état initial reste toujours à jour sans re-render en cascade.
   const [value, setValue] = useState(round ? String(round.points) : "");
   const [qwirkle, setQwirkle] = useState<boolean | undefined>(round?.detail?.qwirkle);
+  // Le clavier mobile perturbe le sticky de l'en-tête (limitation des
+  // navigateurs, pas un bug d'ici) : pendant la saisie, on affiche le nom
+  // du joueur juste au-dessus de la case pour ne jamais perdre le repère.
+  const [focused, setFocused] = useState(false);
 
   const numericValue = value === "" ? null : Number(value) || 0;
   const showQwirkleToggle = numericValue !== null && isLikelyQwirkle(numericValue);
@@ -496,14 +503,26 @@ function ScoreCell({
   }
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="relative flex flex-col items-center gap-1">
+      {focused && (
+        <span
+          className="absolute bottom-full z-30 mb-1 whitespace-nowrap rounded-full px-2.5 py-1 font-quicksand text-xs font-bold text-white"
+          style={{ background: "#163D2E" }}
+        >
+          {participantName}
+        </span>
+      )}
       <input
         type="number"
         inputMode="numeric"
         value={value}
         disabled={disabled}
         onChange={(event) => setValue(event.target.value)}
-        onBlur={commit}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          commit();
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();

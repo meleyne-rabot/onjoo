@@ -358,6 +358,7 @@ function RoundRow({
               // change côté serveur (ex. correction sur un autre appareil).
               key={round ? `${round.id}-${round.points}` : "empty"}
               round={round}
+              participantName={participant.name}
               highlighted={isActive}
               disabled={disabled}
               onSave={(points, detail) => onSave(participant.id, roundIndex, points, detail)}
@@ -371,11 +372,13 @@ function RoundRow({
 
 function ScoreCell({
   round,
+  participantName,
   highlighted,
   disabled,
   onSave,
 }: {
   round: Round | undefined;
+  participantName: string;
   highlighted: boolean;
   disabled: boolean;
   onSave: (points: number, detail: RoundDetail) => void;
@@ -384,6 +387,10 @@ function ScoreCell({
   // un remount (via sa prop key) quand la valeur change côté serveur,
   // donc cet état initial reste toujours à jour sans re-render en cascade.
   const [value, setValue] = useState(round ? String(round.points) : "");
+  // Le clavier mobile perturbe le sticky de l'en-tête (limitation des
+  // navigateurs, pas un bug d'ici) : pendant la saisie, on affiche le nom
+  // du joueur juste au-dessus de la case pour ne jamais perdre le repère.
+  const [focused, setFocused] = useState(false);
 
   function commit() {
     if (value === "" || disabled) return;
@@ -391,23 +398,37 @@ function ScoreCell({
   }
 
   return (
-    <input
-      // Pas d'inputMode="numeric" : à Skyjo les scores peuvent être
-      // négatifs (cartes -2), il faut garder le clavier complet avec "-".
-      type="number"
-      value={value}
-      disabled={disabled}
-      onChange={(event) => setValue(event.target.value)}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          (event.target as HTMLInputElement).blur();
-        }
-      }}
-      placeholder="–"
-      className="h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
-      style={{ borderWidth: highlighted ? 2 : 1, borderColor: highlighted ? "#163D2E" : "#ddd" }}
-    />
+    <div className="relative flex items-center justify-center">
+      {focused && (
+        <span
+          className="absolute bottom-full z-30 mb-1 whitespace-nowrap rounded-full px-2.5 py-1 font-quicksand text-xs font-bold text-white"
+          style={{ background: "#163D2E" }}
+        >
+          {participantName}
+        </span>
+      )}
+      <input
+        // Pas d'inputMode="numeric" : à Skyjo les scores peuvent être
+        // négatifs (cartes -2), il faut garder le clavier complet avec "-".
+        type="number"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => setValue(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          commit();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            (event.target as HTMLInputElement).blur();
+          }
+        }}
+        placeholder="–"
+        className="h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
+        style={{ borderWidth: highlighted ? 2 : 1, borderColor: highlighted ? "#163D2E" : "#ddd" }}
+      />
+    </div>
   );
 }
