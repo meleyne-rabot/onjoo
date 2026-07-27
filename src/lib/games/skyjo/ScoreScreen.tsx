@@ -128,6 +128,16 @@ export function SkyjoScoreScreen({
     });
   }
 
+  function cancelMatch() {
+    if (!confirm("Annuler cette partie ? Elle sera définitivement supprimée, sans trace dans l'historique.")) {
+      return;
+    }
+    startTransition(async () => {
+      await supabase.from("matches").delete().eq("id", matchId);
+      router.push(`/games/${gameCode}`);
+    });
+  }
+
   function finishMatch() {
     const finalWinners = determineWinners(totals);
     startTransition(async () => {
@@ -302,6 +312,14 @@ export function SkyjoScoreScreen({
             className="btn-primary"
           >
             Terminer la partie
+          </button>
+
+          <button
+            onClick={cancelMatch}
+            disabled={isPending}
+            className="font-quicksand text-xs font-semibold text-onjoo-red-500 underline disabled:opacity-40"
+          >
+            Annuler la partie
           </button>
         </>
       )}

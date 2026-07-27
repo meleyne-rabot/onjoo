@@ -327,6 +327,14 @@ create policy "matches_update" on matches
     league_id in (select league_id from league_members where user_id = auth.uid())
   );
 
+-- delete : uniquement une partie en cours (permet d'annuler un test sans
+-- polluer les stats), jamais une partie déjà terminée.
+create policy "matches_delete_in_progress" on matches
+  for delete using (
+    status = 'in_progress'
+    and league_id in (select league_id from league_members where user_id = auth.uid())
+  );
+
 -- match_players
 create policy "match_players_select" on match_players
   for select using (

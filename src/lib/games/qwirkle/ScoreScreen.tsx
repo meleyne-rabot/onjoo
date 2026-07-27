@@ -161,6 +161,16 @@ export function QwirkleScoreScreen({
     });
   }
 
+  function cancelMatch() {
+    if (!confirm("Annuler cette partie ? Elle sera définitivement supprimée, sans trace dans l'historique.")) {
+      return;
+    }
+    startTransition(async () => {
+      await supabase.from("matches").delete().eq("id", matchId);
+      router.push(`/games/${gameCode}`);
+    });
+  }
+
   function finishMatch() {
     const finalWinners = determineWinners(displayTotals);
     startTransition(async () => {
@@ -385,6 +395,14 @@ export function QwirkleScoreScreen({
             className="btn-primary"
           >
             Terminer la partie{finisherName ? ` (+6 à ${finisherName})` : ""}
+          </button>
+
+          <button
+            onClick={cancelMatch}
+            disabled={isPending}
+            className="font-quicksand text-xs font-semibold text-onjoo-red-500 underline disabled:opacity-40"
+          >
+            Annuler la partie
           </button>
         </>
       )}
