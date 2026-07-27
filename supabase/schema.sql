@@ -110,7 +110,7 @@ create index match_players_match_id_idx on match_players (match_id);
 insert into games (code, name, active) values
   ('qwirkle', 'Qwirkle', true),
   ('uno', 'Uno', false),
-  ('flip7', 'Flip 7', false),
+  ('flip7', 'Flip 7', true),
   ('ascenseur', 'Ascenseur', false),
   ('skyjo', 'Skyjo', true);
 
