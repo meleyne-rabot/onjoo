@@ -77,3 +77,14 @@ export function playersOverTarget(totals: Record<string, number>): string[] {
     .filter(([, value]) => value >= TARGET_SCORE)
     .map(([id]) => id);
 }
+
+// Marge d'alerte avant le seuil de fin de partie (ex. dès 70 pts sur 100).
+export const APPROACHING_MARGIN = 30;
+
+export function playersApproachingTarget(
+  totals: Record<string, number>,
+): string[] {
+  return Object.entries(totals)
+    .filter(([, value]) => value >= TARGET_SCORE - APPROACHING_MARGIN && value < TARGET_SCORE)
+    .map(([id]) => id);
+}

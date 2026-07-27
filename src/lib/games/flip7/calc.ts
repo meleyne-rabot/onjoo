@@ -75,3 +75,16 @@ export function playersOverTarget(totals: Record<string, number>): string[] {
     .filter(([, value]) => value >= TARGET_SCORE)
     .map(([id]) => id);
 }
+
+// Marge avant le seuil de fin de partie (ex. dès 170 pts sur 200) : ici
+// pas une alerte mais une indication qu'on approche d'une victoire
+// possible, le score le plus HAUT gagnant à Flip 7.
+export const APPROACHING_MARGIN = 30;
+
+export function playersApproachingTarget(
+  totals: Record<string, number>,
+): string[] {
+  return Object.entries(totals)
+    .filter(([, value]) => value >= TARGET_SCORE - APPROACHING_MARGIN && value < TARGET_SCORE)
+    .map(([id]) => id);
+}

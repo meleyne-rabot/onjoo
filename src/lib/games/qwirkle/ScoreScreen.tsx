@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
+import { RulesButton } from "@/components/RulesButton";
 import {
   activeRoundIndex,
   applyFinishBonus,
@@ -215,14 +216,17 @@ export function QwirkleScoreScreen({
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
-          {!isCompleted && (
-            <p className="font-quicksand text-sm text-[#777]">
-              Un tour se sauvegarde tout seul dès que tu saisis un score.
-            </p>
-          )}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <RulesButton gameCode="qwirkle" gameName="Qwirkle" />
+          <div>
+            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
+            {!isCompleted && (
+              <p className="font-quicksand text-sm text-[#777]">
+                Un tour se sauvegarde tout seul dès que tu saisis un score.
+              </p>
+            )}
+          </div>
         </div>
         <span className="badge">Total partie : {matchTotal}</span>
       </div>
@@ -252,7 +256,7 @@ export function QwirkleScoreScreen({
           className="grid gap-px bg-[#eee]"
           style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
         >
-          <div className="sticky top-0 z-10 bg-[#FAF1DE]" />
+          <div className="sticky top-0 left-0 z-20 bg-[#FAF1DE]" />
           {orderedParticipants.map((participant) => (
             <div
               key={participant.id}
@@ -277,7 +281,7 @@ export function QwirkleScoreScreen({
             />
           ))}
 
-          <div className="sticky bottom-0 z-10 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
+          <div className="sticky bottom-0 left-0 z-20 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
             Total
           </div>
           {orderedParticipants.map((participant) => (
@@ -374,7 +378,7 @@ function RoundRow({
 }) {
   return (
     <>
-      <div className="flex items-center justify-center bg-white px-1 py-2 font-quicksand text-sm font-bold text-[#999]">
+      <div className="sticky left-0 z-10 flex items-center justify-center bg-white px-1 py-2 font-quicksand text-sm font-bold text-[#999]">
         T{roundIndex}
       </div>
       {participants.map((participant) => {

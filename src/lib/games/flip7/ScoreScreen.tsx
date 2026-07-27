@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
+import { RulesButton } from "@/components/RulesButton";
 import {
   activeRoundIndex,
   cumulativeTotals,
   determineWinners,
   lastRoundIndexWithData,
+  playersApproachingTarget,
   playersOverTarget,
   TARGET_SCORE,
   type Round,
@@ -92,6 +94,7 @@ export function Flip7ScoreScreen({
   const winners = isCompleted ? determineWinners(totals) : [];
   const winnerPoints = winners.length > 0 ? totals[winners[0]] ?? 0 : 0;
   const overTarget = !isCompleted ? playersOverTarget(totals) : [];
+  const approachingTarget = !isCompleted ? playersApproachingTarget(totals) : [];
 
   function saveCell(matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) {
     startTransition(async () => {
@@ -168,14 +171,17 @@ export function Flip7ScoreScreen({
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Flip 7</h1>
-          {!isCompleted && (
-            <p className="font-quicksand text-sm text-[#777]">
-              Un tour se sauvegarde tout seul dès que tu saisis un score.
-            </p>
-          )}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <RulesButton gameCode="flip7" gameName="Flip 7" />
+          <div>
+            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Flip 7</h1>
+            {!isCompleted && (
+              <p className="font-quicksand text-sm text-[#777]">
+                Un tour se sauvegarde tout seul dès que tu saisis un score.
+              </p>
+            )}
+          </div>
         </div>
         <span className="badge">Total partie : {matchTotal}</span>
       </div>
@@ -198,7 +204,7 @@ export function Flip7ScoreScreen({
           className="grid gap-px bg-[#eee]"
           style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
         >
-          <div className="sticky top-0 z-10 bg-[#FAF1DE]" />
+          <div className="sticky top-0 left-0 z-20 bg-[#FAF1DE]" />
           {participants.map((participant) => (
             <div
               key={participant.id}
@@ -223,7 +229,7 @@ export function Flip7ScoreScreen({
             />
           ))}
 
-          <div className="sticky bottom-0 z-10 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
+          <div className="sticky bottom-0 left-0 z-20 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
             Total
           </div>
           {participants.map((participant) => (
@@ -237,6 +243,11 @@ export function Flip7ScoreScreen({
               {overTarget.includes(participant.id) && (
                 <span className="font-quicksand text-[10px] font-bold" style={{ color: "#d64545" }}>
                   {TARGET_SCORE}+
+                </span>
+              )}
+              {approachingTarget.includes(participant.id) && (
+                <span className="font-quicksand text-[10px] font-bold text-onjoo-sage-500">
+                  reste {TARGET_SCORE - (totals[participant.id] ?? 0)} pour gagner
                 </span>
               )}
             </div>
@@ -290,7 +301,7 @@ function RoundRow({
 }) {
   return (
     <>
-      <div className="flex items-center justify-center bg-white px-1 py-2 font-quicksand text-sm font-bold text-[#999]">
+      <div className="sticky left-0 z-10 flex items-center justify-center bg-white px-1 py-2 font-quicksand text-sm font-bold text-[#999]">
         T{roundIndex}
       </div>
       {participants.map((participant) => {
