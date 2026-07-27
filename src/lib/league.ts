@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 
 const COOKIE_NAME = "current_league_id";
 
@@ -42,9 +42,18 @@ export const getActiveLeague = cache(async (): Promise<ActiveLeague | null> => {
     if (data) return data;
   }
 
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  // La policy RLS de league_members autorise à voir une ligne si
+  // user_id = soi-même OU si on est membre de la même ligue (nécessaire
+  // pour que la page Joueurs liste les autres membres) — sans filtre
+  // explicite ici, la requête remonte une ligne par membre de la ligue
+  // au lieu d'une ligne par adhésion de CE compte.
   const { data: memberships } = await supabase
     .from("league_members")
     .select("league_id, leagues(id, name, invite_token)")
+    .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .returns<MembershipRow[]>();
 
@@ -57,9 +66,13 @@ export const getActiveLeague = cache(async (): Promise<ActiveLeague | null> => {
 // distinct de getActiveLeague qui n'en résout qu'une.
 export const getMyLeagues = cache(async (): Promise<ActiveLeague[]> => {
   const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return [];
+
   const { data: memberships } = await supabase
     .from("league_members")
     .select("league_id, leagues(id, name, invite_token)")
+    .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .returns<MembershipRow[]>();
 
