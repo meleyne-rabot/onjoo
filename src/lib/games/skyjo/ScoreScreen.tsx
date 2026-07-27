@@ -28,7 +28,6 @@ export function SkyjoScoreScreen({
   participants,
   initialRounds,
   initialStatus,
-  initialTurnOrderSet,
 }: {
   matchId: string;
   gameCode: string;
@@ -42,21 +41,11 @@ export function SkyjoScoreScreen({
   const supabase = useMemo(() => createClient(), []);
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
-  const [turnOrderIds, setTurnOrderIds] = useState<string[] | null>(null);
-  const [turnOrderSet, setTurnOrderSet] = useState(initialTurnOrderSet);
   const [isPending, startTransition] = useTransition();
 
-  const orderedParticipants = useMemo(() => {
-    if (!turnOrderIds) return participants;
-    const byId = new Map(participants.map((p) => [p.id, p]));
-    return turnOrderIds
-      .map((id) => byId.get(id))
-      .filter((p): p is Participant => Boolean(p));
-  }, [participants, turnOrderIds]);
-
   const participantIds = useMemo(
-    () => orderedParticipants.map((p) => p.id),
-    [orderedParticipants],
+    () => participants.map((p) => p.id),
+    [participants],
   );
 
   useEffect(() => {
@@ -104,21 +93,6 @@ export function SkyjoScoreScreen({
   const winnerPoints = winners.length > 0 ? totals[winners[0]] ?? 0 : 0;
   const overTarget = !isCompleted ? playersOverTarget(totals) : [];
 
-  function pickStarter(starterId: string) {
-    const baseOrder = orderedParticipants.map((p) => p.id);
-    const startIndex = baseOrder.indexOf(starterId);
-    const rotated = [...baseOrder.slice(startIndex), ...baseOrder.slice(0, startIndex)];
-    setTurnOrderIds(rotated);
-    setTurnOrderSet(true);
-    startTransition(async () => {
-      await Promise.all(
-        rotated.map((id, index) =>
-          supabase.from("match_players").update({ turn_order: index }).eq("id", id),
-        ),
-      );
-    });
-  }
-
   function saveCell(matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) {
     startTransition(async () => {
       const { error } = await supabase.from("rounds").upsert(
@@ -140,7 +114,7 @@ export function SkyjoScoreScreen({
     const finalWinners = determineWinners(totals);
     startTransition(async () => {
       await Promise.all(
-        orderedParticipants.map((participant) =>
+        participants.map((participant) =>
           supabase
             .from("match_players")
             .update({
@@ -162,7 +136,7 @@ export function SkyjoScoreScreen({
   const roundIndices = isCompleted
     ? Array.from(new Set(rounds.map((r) => r.round_index))).sort((a, b) => a - b)
     : Array.from({ length: activeRound }, (_, i) => i + 1);
-  const gridTemplateColumns = `52px repeat(${orderedParticipants.length}, minmax(92px, 1fr))`;
+  const gridTemplateColumns = `52px repeat(${participants.length}, minmax(92px, 1fr))`;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8 sm:px-6">
@@ -173,7 +147,7 @@ export function SkyjoScoreScreen({
             {winners.length > 1 ? "Égalité !" : "Victoire !"}
           </h1>
           <div className="flex flex-wrap justify-center gap-4">
-            {orderedParticipants
+            {participants
               .filter((p) => winners.includes(p.id))
               .map((p) => (
                 <div key={p.id} className="flex flex-col items-center gap-1">
@@ -209,7 +183,7 @@ export function SkyjoScoreScreen({
       {overTarget.length > 0 && (
         <div className="card flex items-center gap-2" style={{ borderColor: "#d64545" }}>
           <span className="font-quicksand text-sm font-semibold" style={{ color: "#d64545" }}>
-            {orderedParticipants
+            {participants
               .filter((p) => overTarget.includes(p.id))
               .map((p) => p.name)
               .join(", ")}{" "}
@@ -219,33 +193,13 @@ export function SkyjoScoreScreen({
         </div>
       )}
 
-      {!turnOrderSet && !isCompleted && (
-        <div className="card flex flex-col gap-3">
-          <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-onjoo-green-900">
-            Qui commence ?
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {orderedParticipants.map((participant) => (
-              <button
-                key={participant.id}
-                type="button"
-                onClick={() => pickStarter(participant.id)}
-                className="rounded-full border-2 border-[#ddd] px-3 py-1.5 font-quicksand text-sm font-bold text-onjoo-green-900"
-              >
-                {participant.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="overflow-x-auto rounded-xl border border-[#eee]">
         <div
           className="grid gap-px bg-[#eee]"
-          style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
+          style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
         >
           <div className="sticky top-0 z-10 bg-[#FAF1DE]" />
-          {orderedParticipants.map((participant) => (
+          {participants.map((participant) => (
             <div
               key={participant.id}
               className="sticky top-0 z-10 flex flex-col items-center gap-1 bg-[#FAF1DE] px-1 py-2.5"
@@ -263,7 +217,7 @@ export function SkyjoScoreScreen({
               roundIndex={roundIndex}
               isActive={!isCompleted && roundIndex === activeRound}
               disabled={isCompleted}
-              participants={orderedParticipants}
+              participants={participants}
               rounds={rounds}
               onSave={saveCell}
             />
@@ -272,7 +226,7 @@ export function SkyjoScoreScreen({
           <div className="sticky bottom-0 z-10 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
             Total
           </div>
-          {orderedParticipants.map((participant) => (
+          {participants.map((participant) => (
             <div
               key={participant.id}
               className="sticky bottom-0 z-10 flex flex-col items-center justify-center gap-0.5 bg-[#FAF1DE] px-1 py-2.5"
