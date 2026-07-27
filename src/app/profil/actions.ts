@@ -18,5 +18,6 @@ export async function renameLeague(formData: FormData) {
 
 export async function switchLeague(leagueId: string) {
   await setActiveLeagueId(leagueId);
+  revalidatePath("/", "layout");
   redirect("/games");
 }

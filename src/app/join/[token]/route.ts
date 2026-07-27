@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { setActiveLeagueId } from "@/lib/league";
 
@@ -31,5 +32,6 @@ export async function GET(
   }
 
   await setActiveLeagueId(leagueId);
+  revalidatePath("/", "layout");
   return NextResponse.redirect(new URL("/players/setup", request.url));
 }

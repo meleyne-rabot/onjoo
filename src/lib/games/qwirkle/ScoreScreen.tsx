@@ -5,14 +5,13 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import {
-  QWIRKLE_THRESHOLD,
   activeRoundIndex,
   applyFinishBonus,
   cumulativeTotals,
   determineWinners,
   estimatedQwirkleCounts,
+  isLikelyQwirkle,
   lastRoundIndexWithData,
-  totalMatchPoints,
   type Round,
   type RoundDetail,
 } from "./calc";
@@ -30,29 +29,37 @@ export function QwirkleScoreScreen({
   participants,
   initialRounds,
   initialStatus,
+  initialFinisherId,
+  initialTurnOrderSet,
 }: {
   matchId: string;
   gameCode: string;
   participants: Participant[];
   initialRounds: Round[];
   initialStatus: "in_progress" | "completed";
+  initialFinisherId: string | null;
+  initialTurnOrderSet: boolean;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
-  const [finisherId, setFinisherId] = useState<string | null>(null);
+  const [finisherId, setFinisherId] = useState<string | null>(initialFinisherId);
+  const [turnOrderIds, setTurnOrderIds] = useState<string[] | null>(null);
+  const [turnOrderSet, setTurnOrderSet] = useState(initialTurnOrderSet);
   const [isPending, startTransition] = useTransition();
 
-  const participantIds = useMemo(
-    () => participants.map((p) => p.id),
-    [participants],
-  );
+  const orderedParticipants = useMemo(() => {
+    if (!turnOrderIds) return participants;
+    const byId = new Map(participants.map((p) => [p.id, p]));
+    return turnOrderIds
+      .map((id) => byId.get(id))
+      .filter((p): p is Participant => Boolean(p));
+  }, [participants, turnOrderIds]);
 
-  const [winners, setWinners] = useState<string[] | null>(
-    initialStatus === "completed"
-      ? determineWinners(cumulativeTotals(initialRounds, participantIds))
-      : null,
+  const participantIds = useMemo(
+    () => orderedParticipants.map((p) => p.id),
+    [orderedParticipants],
   );
 
   useEffect(() => {
@@ -93,10 +100,27 @@ export function QwirkleScoreScreen({
 
   const totals = cumulativeTotals(rounds, participantIds);
   const qwirkleCounts = estimatedQwirkleCounts(rounds, participantIds);
-  const matchTotal = totalMatchPoints(rounds);
+  const displayTotals = applyFinishBonus(totals, finisherId);
+  const matchTotal = Object.values(displayTotals).reduce((sum, v) => sum + v, 0);
   const activeRound = activeRoundIndex(rounds, participantIds);
   const lastIndex = lastRoundIndexWithData(rounds);
-  const previewTotals = applyFinishBonus(totals, finisherId);
+  const isCompleted = status === "completed";
+  const winners = isCompleted ? determineWinners(displayTotals) : [];
+
+  function pickStarter(starterId: string) {
+    const baseOrder = orderedParticipants.map((p) => p.id);
+    const startIndex = baseOrder.indexOf(starterId);
+    const rotated = [...baseOrder.slice(startIndex), ...baseOrder.slice(0, startIndex)];
+    setTurnOrderIds(rotated);
+    setTurnOrderSet(true);
+    startTransition(async () => {
+      await Promise.all(
+        rotated.map((id, index) =>
+          supabase.from("match_players").update({ turn_order: index }).eq("id", id),
+        ),
+      );
+    });
+  }
 
   function saveCell(matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) {
     startTransition(async () => {
@@ -115,15 +139,14 @@ export function QwirkleScoreScreen({
   }
 
   function finishMatch() {
-    const finalTotals = applyFinishBonus(totals, finisherId);
-    const finalWinners = determineWinners(finalTotals);
+    const finalWinners = determineWinners(displayTotals);
     startTransition(async () => {
       await Promise.all(
-        participants.map((participant) =>
+        orderedParticipants.map((participant) =>
           supabase
             .from("match_players")
             .update({
-              final_score: finalTotals[participant.id] ?? 0,
+              final_score: displayTotals[participant.id] ?? 0,
               is_winner: finalWinners.includes(participant.id),
               finished_board: participant.id === finisherId,
             })
@@ -135,67 +158,90 @@ export function QwirkleScoreScreen({
         .update({ status: "completed", played_at: new Date().toISOString() })
         .eq("id", matchId);
 
-      setWinners(finalWinners);
       setStatus("completed");
     });
   }
 
-  if (status === "completed" && winners) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
-        <p className="text-6xl">🎉</p>
-        <h1 className="font-fredoka text-3xl font-bold text-onjoo-green-900">
-          {winners.length > 1 ? "Égalité !" : "Victoire !"}
-        </h1>
-        <div className="flex flex-wrap justify-center gap-6">
-          {participants
-            .filter((p) => winners.includes(p.id))
-            .map((p) => (
-              <div key={p.id} className="flex flex-col items-center gap-2">
-                <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={64} />
-                <span className="font-fredoka text-lg font-semibold text-onjoo-green-900">
-                  {p.name}
-                </span>
-                <span className="font-quicksand text-[#777]">{totals[p.id]} points</span>
-              </div>
-            ))}
-        </div>
-        <p className="font-quicksand text-[#777]">
-          Total de points de la partie : {matchTotal}
-        </p>
-        <button onClick={() => router.push(`/games/${gameCode}`)} className="btn-primary">
-          Voir l&apos;historique
-        </button>
-      </main>
-    );
-  }
-
-  const roundIndices = Array.from({ length: activeRound }, (_, i) => i + 1);
-  const gridTemplateColumns = `52px repeat(${participants.length}, minmax(72px, 1fr))`;
-  const finisherName = participants.find((p) => p.id === finisherId)?.name;
+  const roundIndices = isCompleted
+    ? Array.from(new Set(rounds.map((r) => r.round_index))).sort((a, b) => a - b)
+    : Array.from({ length: activeRound }, (_, i) => i + 1);
+  const gridTemplateColumns = `52px repeat(${orderedParticipants.length}, minmax(92px, 1fr))`;
+  const finisherName = orderedParticipants.find((p) => p.id === finisherId)?.name;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8 sm:px-6">
-      <div>
-        <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
-        <p className="font-quicksand text-sm text-[#777]">
-          Un tour se sauvegarde tout seul dès que tu saisis un score.
-        </p>
+      {isCompleted && (
+        <div className="card flex flex-col items-center gap-2 text-center">
+          <p className="text-4xl">🎉</p>
+          <h1 className="font-fredoka text-2xl font-bold text-onjoo-green-900">
+            {winners.length > 1 ? "Égalité !" : "Victoire !"}
+          </h1>
+          <div className="flex flex-wrap justify-center gap-4">
+            {orderedParticipants
+              .filter((p) => winners.includes(p.id))
+              .map((p) => (
+                <div key={p.id} className="flex flex-col items-center gap-1">
+                  <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={44} />
+                  <span className="font-fredoka text-sm font-semibold text-onjoo-green-900">
+                    {p.name}
+                  </span>
+                </div>
+              ))}
+          </div>
+          <button
+            onClick={() => router.push(`/games/${gameCode}`)}
+            className="btn-primary mt-2"
+          >
+            Voir l&apos;historique
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
+          {!isCompleted && (
+            <p className="font-quicksand text-sm text-[#777]">
+              Un tour se sauvegarde tout seul dès que tu saisis un score.
+            </p>
+          )}
+        </div>
+        <span className="badge">Total partie : {matchTotal}</span>
       </div>
+
+      {!turnOrderSet && !isCompleted && (
+        <div className="card flex flex-col gap-3">
+          <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-onjoo-green-900">
+            Qui commence ?
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {orderedParticipants.map((participant) => (
+              <button
+                key={participant.id}
+                type="button"
+                onClick={() => pickStarter(participant.id)}
+                className="rounded-full border-2 border-[#ddd] px-3 py-1.5 font-quicksand text-sm font-bold text-onjoo-green-900"
+              >
+                {participant.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-[#eee]">
         <div
           className="grid gap-px bg-[#eee]"
-          style={{ gridTemplateColumns, minWidth: 52 + participants.length * 72 }}
+          style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
         >
-          <div className="bg-[#FAF1DE]" />
-          {participants.map((participant) => (
+          <div className="sticky top-0 z-10 bg-[#FAF1DE]" />
+          {orderedParticipants.map((participant) => (
             <div
               key={participant.id}
-              className="flex flex-col items-center gap-1 bg-[#FAF1DE] px-1 py-2"
+              className="sticky top-0 z-10 flex flex-col items-center gap-1 bg-[#FAF1DE] px-1 py-2.5"
             >
-              <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={26} />
-              <span className="truncate font-quicksand text-[11px] font-bold text-onjoo-green-900">
+              <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
+              <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
                 {participant.name}
               </span>
             </div>
@@ -205,31 +251,32 @@ export function QwirkleScoreScreen({
             <RoundRow
               key={roundIndex}
               roundIndex={roundIndex}
-              isActive={roundIndex === activeRound}
-              participants={participants}
+              isActive={!isCompleted && roundIndex === activeRound}
+              disabled={isCompleted}
+              participants={orderedParticipants}
               rounds={rounds}
               onSave={saveCell}
             />
           ))}
 
-          <div className="flex items-center justify-center bg-[#FAF1DE] px-1 py-2 font-fredoka text-xs font-bold text-onjoo-green-900">
+          <div className="sticky bottom-0 z-10 flex items-center justify-center bg-[#FAF1DE] px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
             Total
           </div>
-          {participants.map((participant) => (
+          {orderedParticipants.map((participant) => (
             <div
               key={participant.id}
-              className="flex flex-col items-center justify-center gap-0.5 bg-[#FAF1DE] px-1 py-2"
+              className="sticky bottom-0 z-10 flex flex-col items-center justify-center gap-0.5 bg-[#FAF1DE] px-1 py-2.5"
             >
-              <span className="font-fredoka text-base font-bold text-onjoo-green-900">
-                {previewTotals[participant.id] ?? 0}
+              <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
+                {displayTotals[participant.id] ?? 0}
               </span>
               {finisherId === participant.id && (
-                <span className="font-quicksand text-[9px] font-bold text-onjoo-orange-500">
+                <span className="font-quicksand text-[10px] font-bold text-onjoo-orange-500">
                   +6 fin
                 </span>
               )}
               {(qwirkleCounts[participant.id] ?? 0) > 0 && (
-                <span className="font-quicksand text-[9px] text-[#999]">
+                <span className="font-quicksand text-[10px] text-[#999]">
                   {qwirkleCounts[participant.id]} Qwirkle
                   {qwirkleCounts[participant.id] > 1 ? "s" : ""}
                 </span>
@@ -239,50 +286,55 @@ export function QwirkleScoreScreen({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 font-quicksand text-xs text-onjoo-sage-500">
-        <span className="h-1.5 w-1.5 rounded-full bg-onjoo-sage-500" />
-        Enregistré automatiquement
-      </div>
-
-      <button
-        onClick={undoLastRound}
-        disabled={isPending || lastIndex === null}
-        className="btn-secondary"
-      >
-        Annuler le dernier tour
-      </button>
-
-      <div className="card flex flex-col gap-3">
-        <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-onjoo-green-900">
-          Qui a terminé le plateau ? (+6 pts bonus auto)
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {participants.map((participant) => (
+      {!isCompleted && (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-quicksand text-xs text-onjoo-sage-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-onjoo-sage-500" />
+              Enregistré automatiquement
+            </div>
             <button
-              key={participant.id}
-              type="button"
-              onClick={() =>
-                setFinisherId((current) => (current === participant.id ? null : participant.id))
-              }
-              className={`rounded-full border-2 px-3 py-1.5 font-quicksand text-sm font-bold ${
-                finisherId === participant.id
-                  ? "border-onjoo-green-900 text-onjoo-green-900"
-                  : "border-[#ddd] text-[#999]"
-              }`}
+              onClick={undoLastRound}
+              disabled={isPending || lastIndex === null}
+              className="font-quicksand text-xs font-semibold text-[#999] underline disabled:opacity-40"
             >
-              {participant.name}
+              Annuler le dernier tour
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      <button
-        onClick={finishMatch}
-        disabled={isPending || rounds.length === 0}
-        className="btn-primary"
-      >
-        Terminer la partie{finisherName ? ` (+6 à ${finisherName})` : ""}
-      </button>
+          <div className="card flex flex-col gap-3">
+            <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-onjoo-green-900">
+              Qui a terminé le plateau ? (+6 pts bonus auto)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {orderedParticipants.map((participant) => (
+                <button
+                  key={participant.id}
+                  type="button"
+                  onClick={() =>
+                    setFinisherId((current) => (current === participant.id ? null : participant.id))
+                  }
+                  className={`rounded-full border-2 px-3 py-1.5 font-quicksand text-sm font-bold ${
+                    finisherId === participant.id
+                      ? "border-onjoo-green-900 text-onjoo-green-900"
+                      : "border-[#ddd] text-[#999]"
+                  }`}
+                >
+                  {participant.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={finishMatch}
+            disabled={isPending || rounds.length === 0}
+            className="btn-primary"
+          >
+            Terminer la partie{finisherName ? ` (+6 à ${finisherName})` : ""}
+          </button>
+        </>
+      )}
     </main>
   );
 }
@@ -290,19 +342,21 @@ export function QwirkleScoreScreen({
 function RoundRow({
   roundIndex,
   isActive,
+  disabled,
   participants,
   rounds,
   onSave,
 }: {
   roundIndex: number;
   isActive: boolean;
+  disabled: boolean;
   participants: Participant[];
   rounds: Round[];
   onSave: (matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) => void;
 }) {
   return (
     <>
-      <div className="flex items-center justify-center bg-white px-1 py-2 font-quicksand text-xs font-bold text-[#999]">
+      <div className="flex items-center justify-center bg-white px-1 py-2 font-quicksand text-sm font-bold text-[#999]">
         T{roundIndex}
       </div>
       {participants.map((participant) => {
@@ -317,6 +371,7 @@ function RoundRow({
               key={round ? `${round.id}-${round.points}-${round.detail?.qwirkle}` : "empty"}
               round={round}
               highlighted={isActive}
+              disabled={disabled}
               onSave={(points, detail) => onSave(participant.id, roundIndex, points, detail)}
             />
           </div>
@@ -329,10 +384,12 @@ function RoundRow({
 function ScoreCell({
   round,
   highlighted,
+  disabled,
   onSave,
 }: {
   round: Round | undefined;
   highlighted: boolean;
+  disabled: boolean;
   onSave: (points: number, detail: RoundDetail) => void;
 }) {
   // Pas de useEffect pour resynchroniser depuis `round` : le parent force
@@ -342,13 +399,21 @@ function ScoreCell({
   const [qwirkle, setQwirkle] = useState<boolean | undefined>(round?.detail?.qwirkle);
 
   const numericValue = value === "" ? null : Number(value) || 0;
-  const showQwirkleToggle = numericValue !== null && numericValue > QWIRKLE_THRESHOLD;
+  const showQwirkleToggle = numericValue !== null && isLikelyQwirkle(numericValue);
 
-  function commit(nextQwirkle?: boolean) {
-    if (value === "") return;
+  function commit() {
+    if (value === "" || disabled) return;
     const points = Number(value) || 0;
-    const detail: RoundDetail =
-      nextQwirkle !== undefined ? { qwirkle: nextQwirkle } : qwirkle !== undefined ? { qwirkle } : {};
+    const detail: RoundDetail = qwirkle !== undefined ? { qwirkle } : {};
+    onSave(points, detail);
+  }
+
+  function toggleQwirkle() {
+    if (value === "" || disabled) return;
+    const next = qwirkle === true ? undefined : true;
+    setQwirkle(next);
+    const points = Number(value) || 0;
+    const detail: RoundDetail = next !== undefined ? { qwirkle: next } : {};
     onSave(points, detail);
   }
 
@@ -358,8 +423,9 @@ function ScoreCell({
         type="number"
         inputMode="numeric"
         value={value}
+        disabled={disabled}
         onChange={(event) => setValue(event.target.value)}
-        onBlur={() => commit()}
+        onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
@@ -367,40 +433,22 @@ function ScoreCell({
           }
         }}
         placeholder="–"
-        className="h-8 w-10 rounded-lg border text-center font-quicksand text-sm font-bold text-onjoo-green-900 focus:outline-none"
+        className="h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
         style={{ borderWidth: highlighted ? 2 : 1, borderColor: highlighted ? "#163D2E" : "#ddd" }}
       />
       {showQwirkleToggle && (
-        <div className="flex gap-0.5 rounded-full bg-[#FAF1DE] p-0.5">
-          <button
-            type="button"
-            onClick={() => {
-              setQwirkle(true);
-              commit(true);
-            }}
-            className="rounded-full px-1.5 py-0.5 font-quicksand text-[9px] font-bold"
-            style={{
-              background: qwirkle === true ? "#163D2E" : "transparent",
-              color: qwirkle === true ? "#fff" : "#999",
-            }}
-          >
-            Qwirkle
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setQwirkle(false);
-              commit(false);
-            }}
-            className="rounded-full px-1.5 py-0.5 font-quicksand text-[9px] font-bold"
-            style={{
-              background: qwirkle === false ? "#163D2E" : "transparent",
-              color: qwirkle === false ? "#fff" : "#999",
-            }}
-          >
-            Non
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={toggleQwirkle}
+          disabled={disabled}
+          className="rounded-full px-2 py-0.5 font-quicksand text-[10px] font-bold"
+          style={{
+            background: qwirkle === true ? "#163D2E" : "#FAF1DE",
+            color: qwirkle === true ? "#fff" : "#163D2E",
+          }}
+        >
+          Qwirkle{qwirkle === true ? " ✓" : ""}
+        </button>
       )}
     </div>
   );

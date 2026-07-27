@@ -12,9 +12,24 @@ type MatchPlayerRow = {
   players: { name: string } | { name: string }[] | null;
 };
 
+type RoundRow = {
+  points: number;
+  detail: { qwirkle?: boolean } | null;
+};
+
 function participantName(row: MatchPlayerRow): string | undefined {
   if (row.guest_name) return row.guest_name;
   return Array.isArray(row.players) ? row.players[0]?.name : row.players?.name;
+}
+
+// Un score >= 12 est un signe quasi certain de Qwirkle (cf. section 4 du
+// spec), sauf confirmation/infirmation explicite via le toggle de l'écran
+// de score (detail.qwirkle).
+function countQwirkles(rounds: RoundRow[]): number {
+  return rounds.filter((round) => {
+    const explicit = round.detail?.qwirkle;
+    return explicit === true || (explicit === undefined && round.points >= 12);
+  }).length;
 }
 
 export default async function GameHistoryPage({
@@ -38,7 +53,7 @@ export default async function GameHistoryPage({
   const { data: matches } = await supabase
     .from("matches")
     .select(
-      "id, status, played_at, created_at, match_players(final_score, is_winner, guest_name, players(name))",
+      "id, status, played_at, created_at, match_players(final_score, is_winner, guest_name, players(name)), rounds(points, detail)",
     )
     .eq("league_id", league.id)
     .eq("game_code", code)
@@ -73,6 +88,7 @@ export default async function GameHistoryPage({
             0,
           );
           const winners = players.filter((mp) => mp.is_winner);
+          const qwirkleCount = countQwirkles((match.rounds ?? []) as RoundRow[]);
 
           return (
             <Link
@@ -105,6 +121,11 @@ export default async function GameHistoryPage({
                   <span className="font-quicksand text-xs text-[#777]">
                     Total partie : {totalPoints}
                   </span>
+                  {qwirkleCount > 0 && (
+                    <span className="font-quicksand text-xs text-[#777]">
+                      · {qwirkleCount} Qwirkle{qwirkleCount > 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
               )}
             </Link>

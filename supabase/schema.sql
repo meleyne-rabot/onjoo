@@ -66,6 +66,10 @@ create table match_players (
   -- true si ce joueur a vidé son chevalet en premier (bonus +6 en fin de
   -- partie, cf. section 4 du spec Qwirkle).
   finished_board boolean not null default false,
+  -- Ordre de jeu (0 = commence), choisi via "Qui commence ?" en début de
+  -- partie. Nul tant que ce n'est pas encore choisi.
+  turn_order integer,
+  created_at timestamptz not null default now(),
   constraint match_players_player_or_guest check (
     (player_id is not null and guest_name is null) or
     (player_id is null and guest_name is not null)

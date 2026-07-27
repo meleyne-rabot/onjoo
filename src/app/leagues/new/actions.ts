@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { setActiveLeagueId } from "@/lib/league";
 
@@ -23,5 +24,9 @@ export async function createLeague(formData: FormData) {
   }
 
   await setActiveLeagueId(leagueId);
+  // La ligue active change : sans ça, le cache de navigation client de
+  // Next.js peut resservir d'anciennes pages (d'avant le changement de
+  // ligue) sur les prochaines navigations.
+  revalidatePath("/", "layout");
   redirect("/players/setup");
 }

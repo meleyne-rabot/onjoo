@@ -12,6 +12,9 @@ type PlayerJoin = {
 type MatchPlayerRow = {
   id: string;
   guest_name: string | null;
+  finished_board: boolean;
+  turn_order: number | null;
+  created_at: string;
   players: PlayerJoin | PlayerJoin[] | null;
 };
 
@@ -47,8 +50,12 @@ export default async function MatchPage({
   ] = await Promise.all([
     supabase
       .from("match_players")
-      .select("id, guest_name, players(name, avatar_color, avatar_shape)")
-      .eq("match_id", id),
+      .select(
+        "id, guest_name, finished_board, turn_order, created_at, players(name, avatar_color, avatar_shape)",
+      )
+      .eq("match_id", id)
+      .order("turn_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true }),
     supabase
       .from("rounds")
       .select("id, match_player_id, round_index, points, detail")
@@ -63,7 +70,9 @@ export default async function MatchPage({
     throw new Error(roundsError.message);
   }
 
-  const participants = ((matchPlayers ?? []) as MatchPlayerRow[]).map((mp) => {
+  const rows = (matchPlayers ?? []) as MatchPlayerRow[];
+
+  const participants = rows.map((mp) => {
     const player = Array.isArray(mp.players) ? mp.players[0] : mp.players;
     if (player) {
       return {
@@ -81,6 +90,9 @@ export default async function MatchPage({
     };
   });
 
+  const hasTurnOrder = rows.length > 0 && rows.every((r) => r.turn_order !== null);
+  const initialFinisherId = rows.find((r) => r.finished_board)?.id ?? null;
+
   const { ScoreScreen } = GAME_REGISTRY[match.game_code];
 
   return (
@@ -90,6 +102,8 @@ export default async function MatchPage({
       participants={participants}
       initialRounds={rounds ?? []}
       initialStatus={match.status as "in_progress" | "completed"}
+      initialFinisherId={initialFinisherId}
+      initialTurnOrderSet={hasTurnOrder}
     />
   );
 }
