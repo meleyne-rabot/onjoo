@@ -88,7 +88,8 @@ export default async function GameHistoryPage({
             0,
           );
           const winners = players.filter((mp) => mp.is_winner);
-          const qwirkleCount = countQwirkles((match.rounds ?? []) as RoundRow[]);
+          const qwirkleCount =
+            code === "qwirkle" ? countQwirkles((match.rounds ?? []) as RoundRow[]) : 0;
 
           return (
             <Link
