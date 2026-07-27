@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { getMyPlayer } from "@/lib/player";
 import { Logo } from "@/components/Logo";
+import { SubmitButton } from "@/components/SubmitButton";
 import { createMyPlayer } from "./actions";
 
 export default async function PlayerSetupPage() {
@@ -44,9 +45,7 @@ export default async function PlayerSetupPage() {
           placeholder="Ton pseudo"
           className="input-field"
         />
-        <button type="submit" className="btn-primary">
-          Continuer
-        </button>
+        <SubmitButton pendingText="...">Continuer</SubmitButton>
       </form>
     </main>
   );

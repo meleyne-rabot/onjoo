@@ -4,6 +4,7 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { InviteLink } from "@/components/InviteLink";
 import { PlayerRow } from "@/components/PlayerRow";
+import { SubmitButton } from "@/components/SubmitButton";
 import { addPlayer } from "./actions";
 
 export default async function PlayersPage() {
@@ -55,9 +56,9 @@ export default async function PlayersPage() {
           <input type="checkbox" name="is_guest" />
           Joueur invité (sans compte)
         </label>
-        <button type="submit" className="btn-secondary">
+        <SubmitButton pendingText="..." className="btn-secondary">
           Ajouter
-        </button>
+        </SubmitButton>
       </form>
 
       <section className="flex flex-col gap-2">

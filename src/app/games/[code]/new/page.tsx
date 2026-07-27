@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { PlayerPicker } from "@/components/PlayerPicker";
 import { GameIcon } from "@/components/GameIcon";
+import { SubmitButton } from "@/components/SubmitButton";
 import { gameMeta } from "@/lib/games/meta";
 import { addGuestPlayer, createMatch } from "./actions";
 
@@ -60,9 +61,9 @@ export default async function NewMatchPage({
             placeholder="Nom"
             className="input-field flex-1"
           />
-          <button type="submit" className="btn-secondary">
+          <SubmitButton pendingText="..." className="btn-secondary">
             Ajouter
-          </button>
+          </SubmitButton>
         </div>
       </form>
 
@@ -79,9 +80,7 @@ export default async function NewMatchPage({
           <PlayerPicker players={players ?? []} />
         </div>
 
-        <button type="submit" className="btn-primary">
-          Démarrer la partie
-        </button>
+        <SubmitButton pendingText="Démarrage...">Démarrer la partie</SubmitButton>
       </form>
     </main>
   );

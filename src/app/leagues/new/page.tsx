@@ -1,4 +1,5 @@
 import { Logo } from "@/components/Logo";
+import { SubmitButton } from "@/components/SubmitButton";
 import { createLeague } from "./actions";
 
 export default function NewLeaguePage() {
@@ -25,9 +26,7 @@ export default function NewLeaguePage() {
           placeholder="Nom de la ligue"
           className="input-field"
         />
-        <button type="submit" className="btn-primary">
-          Créer la ligue
-        </button>
+        <SubmitButton pendingText="Création...">Créer la ligue</SubmitButton>
       </form>
     </main>
   );
