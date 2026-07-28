@@ -138,19 +138,19 @@ export function AscenseurScoreScreen({
     return roundPlan[roundPlan.length - 1]?.index ?? 1;
   }, [roundPlan, rounds, participantIds]);
 
-  // Le tour actif reste toujours ouvert, ainsi que tout tour qui a déjà
-  // une donnée (pari posé à l'avance par ex.) — sinon des paris saisis
-  // avant de jouer un tour disparaîtraient de l'écran au rechargement,
-  // sans être perdus en base mais invisibles (ce qui est arrivé). Les
-  // tours passés totalement vides restent repliés, dépliables via le
-  // bandeau récapitulatif.
+  // Le tour actif reste toujours ouvert, ainsi que tout tour INCOMPLET
+  // qui a déjà une donnée (pari posé à l'avance mais réalisé pas encore
+  // rempli, par ex.) — sinon ça disparaîtrait de l'écran au rechargement
+  // sans être perdu en base (ce qui est arrivé). Dès qu'un tour est
+  // complet (réalisé rempli pour tout le monde), il se replie comme
+  // prévu — sinon plus aucun tour ne se repliait jamais.
   const visibleRounds = isCompleted
     ? roundPlan
     : roundPlan.filter(
         (r) =>
           r.index === activeRoundIndex ||
           r.index === expandedRoundIndex ||
-          roundHasAnyData(rounds, r.index),
+          (roundHasAnyData(rounds, r.index) && !isRoundComplete(rounds, r.index, participantIds)),
       );
 
   const totals = cumulativeTotals(rounds, participantIds);
