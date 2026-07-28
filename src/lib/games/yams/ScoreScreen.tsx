@@ -185,9 +185,9 @@ export function YamsScoreScreen({
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <RulesButton gameCode="yams" gameName="Yams" />
+          <RulesButton gameCode="yams" gameName="Yam's" />
           <div>
-            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yams</h1>
+            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yam&apos;s</h1>
             {!isCompleted && (
               <p className="font-quicksand text-sm text-[#777]">
                 Tape une case pour choisir ton score.

@@ -24,7 +24,7 @@ export const GAME_REGISTRY = {
     calc: flip7Calc,
   },
   yams: {
-    name: "Yams",
+    name: "Yam's",
     ScoreScreen: YamsScoreScreen,
     calc: yamsCalc,
   },

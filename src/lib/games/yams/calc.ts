@@ -40,7 +40,7 @@ export const CATEGORIES: Category[] = [
   { index: 9, id: "full", label: "Full", section: "lower" },
   { index: 10, id: "petite_suite", label: "Petite suite", section: "lower" },
   { index: 11, id: "grande_suite", label: "Grande suite", section: "lower" },
-  { index: 12, id: "yams", label: "Yams", section: "lower" },
+  { index: 12, id: "yams", label: "Yam's", section: "lower" },
   { index: 13, id: "chance", label: "Chance", section: "lower" },
 ];
 
@@ -64,20 +64,18 @@ const MULTIPLE_OF: Record<string, number> = {
   carre: 4,
 };
 
-// Full/Yams n'ont qu'une seule valeur possible (obtenu ou pas).
+// Full/Petite suite/Yam's n'ont qu'une seule valeur possible (obtenu ou pas).
 const FIXED_VALUE: Record<string, number> = {
   full: 25,
+  petite_suite: 25,
   yams: 50,
 };
 
 export type PillOption = { value: number; label: string; sublabel?: string };
 
-// 2 valeurs possibles selon la suite obtenue (par le haut ou par le bas).
+// Grande suite a 2 valeurs possibles selon la suite obtenue (par le haut
+// ou par le bas) — seule cette figure a cette variante chez cette famille.
 const SUITE_OPTIONS: Record<string, PillOption[]> = {
-  petite_suite: [
-    { value: 20, label: "20", sublabel: "1-2-3-4" },
-    { value: 30, label: "30", sublabel: "2-3-4-5 / 3-4-5-6" },
-  ],
   grande_suite: [
     { value: 30, label: "30", sublabel: "1-2-3-4-5" },
     { value: 40, label: "40", sublabel: "2-3-4-5-6" },

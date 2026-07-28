@@ -9,7 +9,7 @@ export const GAME_META: Record<string, { label: string; category: GameCategory }
   flip7: { label: "Flip 7", category: "cartes" },
   ascenseur: { label: "Ascenseur", category: "cartes" },
   skyjo: { label: "Skyjo", category: "cartes" },
-  yams: { label: "Yams", category: "des" },
+  yams: { label: "Yam's", category: "des" },
 };
 
 export function gameMeta(code: string) {
