@@ -67,6 +67,10 @@ export function AscenseurScoreScreen({
   const [status, setStatus] = useState(initialStatus);
   const [turnOrderIds, setTurnOrderIds] = useState<string[] | null>(null);
   const [turnOrderSet, setTurnOrderSet] = useState(initialTurnOrderSet);
+  // Au tour actif s'ajoute au plus un tour "déplié" pour relecture/
+  // correction (choisi via le bandeau récapitulatif) — les autres tours
+  // passés restent repliés pour ne pas devenir ingérable à 15+ tours.
+  const [expandedRoundIndex, setExpandedRoundIndex] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
   // Cf. Qwirkle/Skyjo/Flip 7/Yams : le conteneur à défilement horizontal
   // devient malgré lui aussi la référence de défilement vertical, donc
@@ -133,7 +137,12 @@ export function AscenseurScoreScreen({
     return roundPlan[roundPlan.length - 1]?.index ?? 1;
   }, [roundPlan, rounds, participantIds]);
 
-  const visibleRounds = isCompleted ? roundPlan : roundPlan.filter((r) => r.index <= activeRoundIndex);
+  // Seul le tour actif reste ouvert par défaut ; les tours précédents
+  // sont repliés (accessibles en tapant leur pastille dans le bandeau
+  // récapitulatif) pour ne pas devenir ingérable à 15+ tours.
+  const visibleRounds = isCompleted
+    ? roundPlan
+    : roundPlan.filter((r) => r.index === activeRoundIndex || r.index === expandedRoundIndex);
 
   const totals = cumulativeTotals(rounds, participantIds);
   const matchTotal = Object.values(totals).reduce((sum, v) => sum + v, 0);
@@ -291,7 +300,15 @@ export function AscenseurScoreScreen({
         <span className="badge">Total partie : {matchTotal}</span>
       </div>
 
-      <RoundOverview roundPlan={roundPlan} activeRoundIndex={activeRoundIndex} isCompleted={isCompleted} />
+      <RoundOverview
+        roundPlan={roundPlan}
+        activeRoundIndex={activeRoundIndex}
+        expandedRoundIndex={expandedRoundIndex}
+        isCompleted={isCompleted}
+        onSelectRound={(index) =>
+          setExpandedRoundIndex((current) => (current === index ? null : index))
+        }
+      />
 
       {!turnOrderSet && !isCompleted && (
         <div className="card flex flex-col gap-3">
@@ -409,11 +426,15 @@ export function AscenseurScoreScreen({
 function RoundOverview({
   roundPlan,
   activeRoundIndex,
+  expandedRoundIndex,
   isCompleted,
+  onSelectRound,
 }: {
   roundPlan: RoundPlan[];
   activeRoundIndex: number;
+  expandedRoundIndex: number | null;
   isCompleted: boolean;
+  onSelectRound: (index: number) => void;
 }) {
   if (roundPlan.length === 0) return null;
 
@@ -423,19 +444,24 @@ function RoundOverview({
         {roundPlan.map((r) => {
           const isPast = isCompleted || r.index < activeRoundIndex;
           const isActive = !isCompleted && r.index === activeRoundIndex;
+          const isExpanded = r.index === expandedRoundIndex;
+          const isFuture = !isCompleted && r.index > activeRoundIndex;
           const label = r.hasTrump ? String(r.cards) : "SA";
           return (
-            <div
+            <button
               key={r.index}
+              type="button"
+              disabled={isFuture}
+              onClick={() => onSelectRound(r.index)}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-quicksand text-[11px] font-bold"
               style={{
                 background: isActive ? "#163D2E" : isPast ? "#FAF1DE" : "#f4efe4",
                 color: isActive ? "#fff" : isPast ? "#163D2E" : "#bbb",
-                border: !r.hasTrump ? "2px solid #E9A23B" : "none",
+                border: isExpanded ? "2px solid #E9A23B" : !r.hasTrump ? "2px solid #E9A23B" : "none",
               }}
             >
               {label}
-            </div>
+            </button>
           );
         })}
       </div>
