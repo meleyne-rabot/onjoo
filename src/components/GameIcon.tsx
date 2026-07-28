@@ -54,18 +54,13 @@ function CategoryMark({ category, s }: { category: GameCategory; s: number }) {
       return (
         <div
           style={{
-            width: 26 * s,
-            height: 26 * s,
+            width: 22 * s,
+            height: 22 * s,
             background: "#8A9A6E",
-            borderRadius: 3 * s,
+            borderRadius: 5 * s,
             transform: "rotate(45deg)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
           }}
-        >
-          <div style={{ width: 8 * s, height: 8 * s, background: "#fff", borderRadius: 2 * s }} />
-        </div>
+        />
       );
     case "plateau":
       return (
@@ -88,7 +83,7 @@ function CategoryMark({ category, s }: { category: GameCategory; s: number }) {
           style={{
             width: 24 * s,
             height: 24 * s,
-            background: "#2F6FB2",
+            background: "#E9A23B",
             borderRadius: 7 * s,
             display: "grid",
             gridTemplateColumns: "repeat(3,1fr)",

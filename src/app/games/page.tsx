@@ -19,7 +19,7 @@ export default async function GamesPage() {
     getMyPlayer(league.id),
     supabase
       .from("games")
-      .select("code, name, active")
+      .select("code, name, active, logo_url")
       .order("active", { ascending: false })
       .order("name", { ascending: true }),
     supabase.from("matches").select("game_code").eq("league_id", league.id),
@@ -54,7 +54,7 @@ export default async function GamesPage() {
           const tile = (
             <>
               <GameIcon category={meta.category} />
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-1 flex-col gap-0.5">
                 <span
                   className="font-fredoka text-base font-semibold"
                   style={{ color: game.active ? "#163D2E" : "#999" }}
@@ -67,6 +67,14 @@ export default async function GamesPage() {
                     : "Bientôt disponible"}
                 </span>
               </div>
+              {game.logo_url && (
+                // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
+                <img
+                  src={game.logo_url}
+                  alt=""
+                  className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
+                />
+              )}
             </>
           );
 

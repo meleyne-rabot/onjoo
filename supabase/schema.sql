@@ -43,7 +43,10 @@ create table players (
 create table games (
   code text primary key,
   name text not null,
-  active boolean not null default false
+  active boolean not null default false,
+  -- Logo officiel du jeu (PNG détouré), affiché à côté de l'icône de
+  -- catégorie sur "Nos jeux" — null tant qu'aucun logo n'a été fourni.
+  logo_url text
 );
 
 create table matches (
