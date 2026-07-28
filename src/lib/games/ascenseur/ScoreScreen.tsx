@@ -29,6 +29,21 @@ function ordinal(n: number): string {
   return n === 1 ? "1er" : `${n}e`;
 }
 
+// Fusionne par (match_player_id, round_index) plutôt que par id : une
+// mise à jour optimiste locale (id provisoire) et l'écho realtime qui
+// arrive ensuite avec le vrai id doivent se réconcilier sur la même
+// ligne, sinon on se retrouve avec un doublon et un total figé sur
+// l'ancienne valeur tant que l'écho n'est pas arrivé.
+function mergeRound(current: Round[], incoming: Round): Round[] {
+  const idx = current.findIndex(
+    (r) => r.match_player_id === incoming.match_player_id && r.round_index === incoming.round_index,
+  );
+  if (idx === -1) return [...current, incoming];
+  const next = [...current];
+  next[idx] = incoming;
+  return next;
+}
+
 export function AscenseurScoreScreen({
   matchId,
   gameCode,
@@ -82,7 +97,7 @@ export function AscenseurScoreScreen({
         { event: "INSERT", schema: "public", table: "rounds", filter: `match_id=eq.${matchId}` },
         (payload) => {
           const row = payload.new as Round;
-          setRounds((current) => (current.some((r) => r.id === row.id) ? current : [...current, row]));
+          setRounds((current) => mergeRound(current, row));
         },
       )
       .on(
@@ -90,7 +105,7 @@ export function AscenseurScoreScreen({
         { event: "UPDATE", schema: "public", table: "rounds", filter: `match_id=eq.${matchId}` },
         (payload) => {
           const row = payload.new as Round;
-          setRounds((current) => current.map((r) => (r.id === row.id ? row : r)));
+          setRounds((current) => mergeRound(current, row));
         },
       )
       .on(
@@ -147,6 +162,19 @@ export function AscenseurScoreScreen({
     );
     const detail: RoundDetail = { ...existing?.detail, bid };
     const points = existing?.detail?.actual ?? 0;
+    // Mise à jour optimiste immédiate : sans ça, l'indicateur "somme des
+    // paris" et l'alerte restent figés sur l'ancienne valeur tant que
+    // l'écho realtime n'est pas revenu (latence perceptible, voire
+    // bloquant si l'écho tarde).
+    setRounds((current) =>
+      mergeRound(current, {
+        id: existing?.id ?? `optimistic-${matchPlayerId}-${roundIndex}`,
+        match_player_id: matchPlayerId,
+        round_index: roundIndex,
+        points,
+        detail,
+      }),
+    );
     startTransition(async () => {
       const { error } = await supabase.from("rounds").upsert(
         { match_id: matchId, match_player_id: matchPlayerId, round_index: roundIndex, points, detail },
@@ -161,6 +189,15 @@ export function AscenseurScoreScreen({
       (r) => r.match_player_id === matchPlayerId && r.round_index === roundIndex,
     );
     const detail: RoundDetail = { ...existing?.detail, actual };
+    setRounds((current) =>
+      mergeRound(current, {
+        id: existing?.id ?? `optimistic-${matchPlayerId}-${roundIndex}`,
+        match_player_id: matchPlayerId,
+        round_index: roundIndex,
+        points: actual,
+        detail,
+      }),
+    );
     startTransition(async () => {
       const { error } = await supabase.from("rounds").upsert(
         { match_id: matchId, match_player_id: matchPlayerId, round_index: roundIndex, points: actual, detail },
