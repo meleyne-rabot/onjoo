@@ -209,7 +209,7 @@ export function YamsScoreScreen({
 
         <div ref={bodyScrollRef} onScroll={syncHorizontalScroll} className="overflow-x-auto">
           <div className="grid gap-px bg-[#eee]" style={{ gridTemplateColumns }}>
-            {CATEGORIES.map((category) => (
+            {CATEGORIES.filter((c) => c.section === "upper").map((category) => (
               <CategoryRow
                 key={category.id}
                 category={category}
@@ -220,6 +220,16 @@ export function YamsScoreScreen({
               />
             ))}
             <SubtotalRows rounds={rounds} participants={participants} />
+            {CATEGORIES.filter((c) => c.section === "lower").map((category) => (
+              <CategoryRow
+                key={category.id}
+                category={category}
+                disabled={isCompleted}
+                participants={participants}
+                rounds={rounds}
+                onSave={saveCell}
+              />
+            ))}
           </div>
         </div>
 
