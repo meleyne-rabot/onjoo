@@ -46,6 +46,14 @@ export const CATEGORIES: Category[] = [
   { index: 13, id: "chance", label: "Chance", section: "lower" },
 ];
 
+// Petite/grande suite ont 2 valeurs possibles selon la suite obtenue
+// (par le haut ou par le bas) — sélection directe plutôt que saisie
+// libre, pour éviter toute erreur de calcul.
+export const SUITE_VALUES: Record<string, { high: number; low: number }> = {
+  petite_suite: { high: 30, low: 20 },
+  grande_suite: { high: 40, low: 30 },
+};
+
 const UPPER_MAX_INDEX = 6;
 
 export function upperSubtotal(rounds: Round[], matchPlayerId: string): number {

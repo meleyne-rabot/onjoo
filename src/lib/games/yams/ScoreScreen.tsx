@@ -10,11 +10,12 @@ import {
   cumulativeTotals,
   DEFAULT_SETTINGS,
   determineWinners,
+  SUITE_VALUES,
   upperBonus,
   upperSubtotal,
+  type Category,
   type Round,
   type RoundDetail,
-  type YamsSettings,
 } from "./calc";
 
 type Participant = {
@@ -26,7 +27,6 @@ type Participant = {
 
 export function YamsScoreScreen({
   matchId,
-  leagueId,
   gameCode,
   participants,
   initialRounds,
@@ -46,8 +46,6 @@ export function YamsScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
-  const [settings, setSettings] = useState<YamsSettings>(DEFAULT_SETTINGS);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   // Cf. Qwirkle/Skyjo/Flip 7 : le conteneur à défilement horizontal
   // devient malgré lui aussi la référence de défilement vertical, donc
   // en-tête et total sont dans leurs propres conteneurs synchronisés.
@@ -62,20 +60,6 @@ export function YamsScoreScreen({
   }
 
   const participantIds = useMemo(() => participants.map((p) => p.id), [participants]);
-
-  useEffect(() => {
-    supabase
-      .from("league_game_settings")
-      .select("settings")
-      .eq("league_id", leagueId)
-      .eq("game_code", "yams")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.settings && typeof data.settings === "object") {
-          setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
-        }
-      });
-  }, [supabase, leagueId]);
 
   useEffect(() => {
     const channel = supabase
@@ -113,7 +97,7 @@ export function YamsScoreScreen({
     };
   }, [supabase, matchId]);
 
-  const totals = cumulativeTotals(rounds, participantIds, settings);
+  const totals = cumulativeTotals(rounds, participantIds, DEFAULT_SETTINGS);
   const matchTotal = Object.values(totals).reduce((sum, v) => sum + v, 0);
   const isCompleted = status === "completed";
   const winners = isCompleted ? determineWinners(totals) : [];
@@ -162,17 +146,6 @@ export function YamsScoreScreen({
     });
   }
 
-  async function saveSettings(next: YamsSettings) {
-    setSettings(next);
-    await supabase
-      .from("league_game_settings")
-      .upsert(
-        { league_id: leagueId, game_code: "yams", settings: next, updated_at: new Date().toISOString() },
-        { onConflict: "league_id,game_code" },
-      );
-    setSettingsOpen(false);
-  }
-
   const gridTemplateColumns = `110px repeat(${participants.length}, minmax(92px, 1fr))`;
 
   return (
@@ -205,16 +178,6 @@ export function YamsScoreScreen({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <RulesButton gameCode="yams" gameName="Yams" />
-          {!isCompleted && (
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Réglages du jeu"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-[#ddd] text-lg"
-            >
-              ⚙️
-            </button>
-          )}
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yams</h1>
             {!isCompleted && (
@@ -254,14 +217,7 @@ export function YamsScoreScreen({
                 onSave={saveCell}
               />
             ))}
-            {CATEGORIES.filter((c) => c.section === "upper").length > 0 && (
-              <SubtotalRows
-                rounds={rounds}
-                participants={participants}
-                settings={settings}
-                afterUpperSection
-              />
-            )}
+            <SubtotalRows rounds={rounds} participants={participants} />
           </div>
         </div>
 
@@ -306,14 +262,6 @@ export function YamsScoreScreen({
           </button>
         </>
       )}
-
-      {settingsOpen && (
-        <SettingsModal
-          settings={settings}
-          onCancel={() => setSettingsOpen(false)}
-          onSave={saveSettings}
-        />
-      )}
     </main>
   );
 }
@@ -325,12 +273,14 @@ function CategoryRow({
   rounds,
   onSave,
 }: {
-  category: { index: number; label: string };
+  category: Category;
   disabled: boolean;
   participants: Participant[];
   rounds: Round[];
   onSave: (matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) => void;
 }) {
+  const suite = SUITE_VALUES[category.id];
+
   return (
     <>
       <div className="sticky left-0 z-10 flex items-center bg-white px-2 py-2 font-quicksand text-sm font-bold text-[#666]">
@@ -342,13 +292,24 @@ function CategoryRow({
         );
         return (
           <div key={participant.id} className="flex items-center justify-center bg-white px-1 py-2">
-            <ScoreCell
-              key={round ? `${round.id}-${round.points}` : "empty"}
-              round={round}
-              participantName={participant.name}
-              disabled={disabled}
-              onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
-            />
+            {suite ? (
+              <SuiteCell
+                key={round ? `${round.id}-${round.points}` : "empty"}
+                round={round}
+                disabled={disabled}
+                high={suite.high}
+                low={suite.low}
+                onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
+              />
+            ) : (
+              <ScoreCell
+                key={round ? `${round.id}-${round.points}` : "empty"}
+                round={round}
+                participantName={participant.name}
+                disabled={disabled}
+                onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
+              />
+            )}
           </div>
         );
       })}
@@ -359,15 +320,10 @@ function CategoryRow({
 function SubtotalRows({
   rounds,
   participants,
-  settings,
-  afterUpperSection,
 }: {
   rounds: Round[];
   participants: Participant[];
-  settings: YamsSettings;
-  afterUpperSection: boolean;
 }) {
-  if (!afterUpperSection) return null;
   return (
     <>
       <div className="sticky left-0 z-10 flex items-center bg-[#f4efe4] px-2 py-2 font-quicksand text-xs font-bold uppercase text-[#999]">
@@ -382,21 +338,70 @@ function SubtotalRows({
         </div>
       ))}
       <div className="sticky left-0 z-10 flex items-center bg-[#f4efe4] px-2 py-2 font-quicksand text-xs font-bold uppercase text-[#999]">
-        Bonus ({settings.bonusThreshold}+)
+        Bonus ({DEFAULT_SETTINGS.bonusThreshold}+)
       </div>
       {participants.map((participant) => {
-        const bonus = upperBonus(upperSubtotal(rounds, participant.id), settings);
+        const subtotal = upperSubtotal(rounds, participant.id);
+        const bonus = upperBonus(subtotal, DEFAULT_SETTINGS);
+        // Sous le seuil : combien il manque encore (négatif), en positif
+        // dès que le bonus est acquis — repère visuel type "reste à faire".
+        const remaining = subtotal - DEFAULT_SETTINGS.bonusThreshold;
         return (
           <div
             key={participant.id}
             className="flex items-center justify-center bg-[#f4efe4] px-1 py-2 font-quicksand text-sm font-bold"
             style={{ color: bonus > 0 ? "#163D2E" : "#bbb" }}
           >
-            {bonus > 0 ? `+${bonus}` : "—"}
+            {bonus > 0 ? `+${bonus}` : remaining}
           </div>
         );
       })}
     </>
+  );
+}
+
+function SuiteCell({
+  round,
+  disabled,
+  high,
+  low,
+  onSave,
+}: {
+  round: Round | undefined;
+  disabled: boolean;
+  high: number;
+  low: number;
+  onSave: (points: number, detail: RoundDetail) => void;
+}) {
+  const current = round?.points;
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onSave(high, {})}
+        className="w-full rounded-full px-2 py-1 font-quicksand text-[11px] font-bold"
+        style={{
+          background: current === high ? "#163D2E" : "#FAF1DE",
+          color: current === high ? "#fff" : "#163D2E",
+        }}
+      >
+        Haut · {high}
+      </button>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onSave(low, {})}
+        className="w-full rounded-full px-2 py-1 font-quicksand text-[11px] font-bold"
+        style={{
+          background: current === low ? "#163D2E" : "#FAF1DE",
+          color: current === low ? "#fff" : "#163D2E",
+        }}
+      >
+        Bas · {low}
+      </button>
+    </div>
   );
 }
 
@@ -450,76 +455,6 @@ function ScoreCell({
         className="h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
         style={{ borderWidth: 1, borderColor: "#ddd" }}
       />
-    </div>
-  );
-}
-
-function SettingsModal({
-  settings,
-  onCancel,
-  onSave,
-}: {
-  settings: YamsSettings;
-  onCancel: () => void;
-  onSave: (settings: YamsSettings) => void | Promise<void>;
-}) {
-  const [threshold, setThreshold] = useState(String(settings.bonusThreshold));
-  const [amount, setAmount] = useState(String(settings.bonusAmount));
-  const [pending, setPending] = useState(false);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onCancel}>
-      <div
-        className="card flex w-full max-w-sm flex-col gap-4 rounded-b-none sm:rounded-b-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
-          Réglages Yams de la ligue
-        </span>
-        <p className="font-quicksand text-xs text-[#777]">
-          Chaque famille a sa variante — ajuste le seuil et le bonus de la partie
-          supérieure. S&apos;applique à toutes les parties de Yams de cette ligue.
-        </p>
-        <label className="flex flex-col gap-1">
-          <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-[#999]">
-            Seuil de la partie supérieure
-          </span>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={threshold}
-            onChange={(event) => setThreshold(event.target.value)}
-            className="input-field"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-[#999]">
-            Points de bonus
-          </span>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            className="input-field"
-          />
-        </label>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={async () => {
-            setPending(true);
-            await onSave({
-              bonusThreshold: Number(threshold) || DEFAULT_SETTINGS.bonusThreshold,
-              bonusAmount: Number(amount) || DEFAULT_SETTINGS.bonusAmount,
-            });
-            setPending(false);
-          }}
-          className="btn-primary"
-        >
-          Valider
-        </button>
-      </div>
     </div>
   );
 }
