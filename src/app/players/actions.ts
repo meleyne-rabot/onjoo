@@ -38,7 +38,9 @@ export async function updatePlayerAvatar(playerId: string, color: string, shape:
     .update({ avatar_color: color, avatar_shape: shape })
     .eq("id", playerId);
 
-  revalidatePath("/players");
+  // Visible aussi dans la NavBar (tous les écrans) et le Profil, pas
+  // seulement la page Joueurs.
+  revalidatePath("/", "layout");
 }
 
 export async function renamePlayer(playerId: string, name: string) {

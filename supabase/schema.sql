@@ -113,7 +113,9 @@ insert into games (code, name, active) values
   ('flip7', 'Flip 7', true),
   ('ascenseur', 'Ascenseur', false),
   ('skyjo', 'Skyjo', true),
-  ('yams', 'Yam''s', true);
+  ('yams', 'Yam''s', true),
+  ('tarot', 'Tarot', false),
+  ('belote', 'Belote', false);
 
 -- ============================================================
 -- Trigger : le créateur d'une ligue en devient admin automatiquement

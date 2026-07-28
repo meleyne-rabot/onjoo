@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getActiveLeague, getMyLeagues } from "@/lib/league";
 import { getMyPlayer } from "@/lib/player";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { AvatarBadge } from "@/components/AvatarBadge";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { LeagueRow } from "@/components/LeagueRow";
 import { signOut } from "@/app/actions";
 
@@ -21,7 +21,12 @@ export default async function ProfilPage() {
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-8 px-6 py-10">
       <header className="flex flex-col items-center gap-3 text-center">
         {myPlayer ? (
-          <AvatarBadge color={myPlayer.avatar_color} shape={myPlayer.avatar_shape} size={64} />
+          <ProfileAvatar
+            playerId={myPlayer.id}
+            color={myPlayer.avatar_color}
+            shape={myPlayer.avatar_shape}
+            size={64}
+          />
         ) : null}
         <div>
           <h1 className="font-fredoka text-2xl font-bold text-onjoo-green-900">

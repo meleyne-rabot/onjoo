@@ -10,6 +10,8 @@ export const GAME_META: Record<string, { label: string; category: GameCategory }
   ascenseur: { label: "Ascenseur", category: "cartes" },
   skyjo: { label: "Skyjo", category: "cartes" },
   yams: { label: "Yam's", category: "des" },
+  tarot: { label: "Tarot", category: "cartes" },
+  belote: { label: "Belote", category: "cartes" },
 };
 
 export function gameMeta(code: string) {
