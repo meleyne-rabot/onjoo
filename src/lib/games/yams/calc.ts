@@ -12,8 +12,6 @@ export type Round = {
 };
 
 export type YamsSettings = {
-  // Seuil (partie supérieure) et bonus associé — variable selon les
-  // familles, cf. réglages de la ligue.
   bonusThreshold: number;
   bonusAmount: number;
 };
@@ -46,31 +44,78 @@ export const CATEGORIES: Category[] = [
   { index: 13, id: "chance", label: "Chance", section: "lower" },
 ];
 
-// Petite/grande suite ont 2 valeurs possibles selon la suite obtenue
-// (par le haut ou par le bas) — sélection directe plutôt que saisie
-// libre, pour éviter toute erreur de calcul.
-export const SUITE_VALUES: Record<string, { high: number; low: number }> = {
-  petite_suite: { high: 30, low: 20 },
-  grande_suite: { high: 40, low: 30 },
-};
+const UPPER_MAX_INDEX = 6;
 
-// Full et Yams n'ont qu'une seule valeur possible (obtenu ou pas) —
-// simple bouton à cocher plutôt que de taper le nombre.
-export const FIXED_VALUES: Record<string, number> = {
-  full: 25,
-  yams: 50,
+// Valeur de face pour les catégories de la partie supérieure (icône dé
+// + calcul des pastilles de l'accordéon : 0 à 5 dés de cette face).
+export const UPPER_FACE: Record<string, number> = {
+  un: 1,
+  deux: 2,
+  trois: 3,
+  quatre: 4,
+  cinq: 5,
+  six: 6,
 };
 
 // Brelan/Carré ne comptent que les dés identiques (jamais les 5) : la
-// valeur est toujours un multiple de la face obtenue (3 ou 4 dés) —
-// autant proposer directement les 6 valeurs possibles (faces 1 à 6)
-// plutôt que de faire calculer le joueur.
-export const MULTIPLE_VALUES: Record<string, number> = {
+// valeur est toujours un multiple de la face obtenue (3 ou 4 dés).
+const MULTIPLE_OF: Record<string, number> = {
   brelan: 3,
   carre: 4,
 };
 
-const UPPER_MAX_INDEX = 6;
+// Full/Yams n'ont qu'une seule valeur possible (obtenu ou pas).
+const FIXED_VALUE: Record<string, number> = {
+  full: 25,
+  yams: 50,
+};
+
+export type PillOption = { value: number; label: string; sublabel?: string };
+
+// 2 valeurs possibles selon la suite obtenue (par le haut ou par le bas).
+const SUITE_OPTIONS: Record<string, PillOption[]> = {
+  petite_suite: [
+    { value: 20, label: "20", sublabel: "1-2-3-4" },
+    { value: 30, label: "30", sublabel: "2-3-4-5 / 3-4-5-6" },
+  ],
+  grande_suite: [
+    { value: 30, label: "30", sublabel: "1-2-3-4-5" },
+    { value: 40, label: "40", sublabel: "2-3-4-5-6" },
+  ],
+};
+
+// Pastilles de score déjà calculées pour une catégorie — null si la
+// valeur est trop variable pour être pré-calculée (Chance uniquement,
+// reste en saisie libre).
+export function categoryOptions(categoryId: string): PillOption[] | null {
+  const face = UPPER_FACE[categoryId];
+  if (face !== undefined) {
+    return [0, 1, 2, 3, 4, 5].map((n) => ({ value: n * face, label: String(n * face) }));
+  }
+  const multiplier = MULTIPLE_OF[categoryId];
+  if (multiplier !== undefined) {
+    return [0, 1, 2, 3, 4, 5, 6].map((face2) => ({
+      value: face2 * multiplier,
+      label: String(face2 * multiplier),
+    }));
+  }
+  const fixed = FIXED_VALUE[categoryId];
+  if (fixed !== undefined) {
+    return [
+      { value: 0, label: "Aucun" },
+      { value: fixed, label: `${fixed} pts` },
+    ];
+  }
+  const suite = SUITE_OPTIONS[categoryId];
+  if (suite) return [{ value: 0, label: "0" }, ...suite];
+  return null;
+}
+
+export function categorySublabel(categoryId: string): string | undefined {
+  if (categoryId === "brelan") return "3 dés identiques";
+  if (categoryId === "carre") return "4 dés identiques";
+  return undefined;
+}
 
 export function upperSubtotal(rounds: Round[], matchPlayerId: string): number {
   return rounds

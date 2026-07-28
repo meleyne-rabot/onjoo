@@ -7,15 +7,16 @@ import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import {
   CATEGORIES,
+  categoryOptions,
+  categorySublabel,
   cumulativeTotals,
   DEFAULT_SETTINGS,
   determineWinners,
-  FIXED_VALUES,
-  MULTIPLE_VALUES,
-  SUITE_VALUES,
+  UPPER_FACE,
   upperBonus,
   upperSubtotal,
   type Category,
+  type PillOption,
   type Round,
   type RoundDetail,
 } from "./calc";
@@ -26,6 +27,10 @@ type Participant = {
   avatarColor: string;
   avatarShape: string;
 };
+
+// Une seule case ouverte à la fois (joueur + catégorie) — le panneau
+// s'affiche en pleine largeur juste sous la ligne concernée.
+type OpenCell = { participantId: string; categoryIndex: number };
 
 export function YamsScoreScreen({
   matchId,
@@ -48,6 +53,7 @@ export function YamsScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
+  const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   // Cf. Qwirkle/Skyjo/Flip 7 : le conteneur à défilement horizontal
   // devient malgré lui aussi la référence de défilement vertical, donc
   // en-tête et total sont dans leurs propres conteneurs synchronisés.
@@ -148,7 +154,7 @@ export function YamsScoreScreen({
     });
   }
 
-  const gridTemplateColumns = `110px repeat(${participants.length}, minmax(92px, 1fr))`;
+  const gridTemplateColumns = `76px repeat(${participants.length}, minmax(84px, 1fr))`;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8 sm:px-6">
@@ -184,7 +190,7 @@ export function YamsScoreScreen({
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yams</h1>
             {!isCompleted && (
               <p className="font-quicksand text-sm text-[#777]">
-                Remplis les catégories dans l&apos;ordre que tu veux.
+                Tape une case pour choisir ton score.
               </p>
             )}
           </div>
@@ -198,8 +204,8 @@ export function YamsScoreScreen({
             <div />
             {participants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
-                <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
-                <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
+                <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={28} />
+                <span className="truncate font-quicksand text-xs font-bold text-onjoo-green-900">
                   {participant.name}
                 </span>
               </div>
@@ -208,7 +214,7 @@ export function YamsScoreScreen({
         </div>
 
         <div ref={bodyScrollRef} onScroll={syncHorizontalScroll} className="overflow-x-auto">
-          <div className="grid gap-px bg-[#eee]" style={{ gridTemplateColumns }}>
+          <div className="grid" style={{ gridTemplateColumns }}>
             {CATEGORIES.filter((c) => c.section === "upper").map((category) => (
               <CategoryRow
                 key={category.id}
@@ -216,6 +222,8 @@ export function YamsScoreScreen({
                 disabled={isCompleted}
                 participants={participants}
                 rounds={rounds}
+                openCell={openCell}
+                setOpenCell={setOpenCell}
                 onSave={saveCell}
               />
             ))}
@@ -227,21 +235,26 @@ export function YamsScoreScreen({
                 disabled={isCompleted}
                 participants={participants}
                 rounds={rounds}
+                openCell={openCell}
+                setOpenCell={setOpenCell}
                 onSave={saveCell}
               />
             ))}
           </div>
         </div>
 
-        <div ref={totalScrollRef} className="sticky bottom-0 z-20 overflow-x-hidden rounded-b-xl bg-[#FAF1DE]">
+        <div
+          ref={totalScrollRef}
+          className="sticky bottom-0 z-20 overflow-x-hidden rounded-b-xl bg-onjoo-green-900"
+        >
           <div className="grid" style={{ gridTemplateColumns }}>
-            <div className="flex items-center justify-center px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
+            <div className="flex items-center px-2 py-2.5 font-fredoka text-sm font-bold text-white">
               Total
             </div>
             {participants.map((participant) => (
               <div
                 key={participant.id}
-                className="flex items-center justify-center px-1 py-2.5 font-fredoka text-lg font-bold text-onjoo-green-900"
+                className="flex items-center justify-center px-1 py-2.5 font-fredoka text-lg font-bold text-white"
               >
                 {totals[participant.id] ?? 0}
               </div>
@@ -278,64 +291,93 @@ export function YamsScoreScreen({
   );
 }
 
+function CategoryLabel({ category }: { category: Category }) {
+  const face = UPPER_FACE[category.id];
+  let icon: React.ReactNode = null;
+  if (face !== undefined) icon = <DiePips face={face} />;
+  else if (category.id === "brelan") icon = <BrelanIcon />;
+  else if (category.id === "carre") icon = <CarreIcon />;
+
+  if (!icon) {
+    return (
+      <span className="font-quicksand text-xs font-bold text-onjoo-green-900">{category.label}</span>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#FAF1DE]">
+        {icon}
+      </div>
+      <span className="font-quicksand text-[11px] font-bold text-onjoo-green-900">
+        {category.label}
+      </span>
+    </div>
+  );
+}
+
 function CategoryRow({
   category,
   disabled,
   participants,
   rounds,
+  openCell,
+  setOpenCell,
   onSave,
 }: {
   category: Category;
   disabled: boolean;
   participants: Participant[];
   rounds: Round[];
+  openCell: OpenCell | null;
+  setOpenCell: (cell: OpenCell | null) => void;
   onSave: (matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) => void;
 }) {
-  const suite = SUITE_VALUES[category.id];
-  const fixed = FIXED_VALUES[category.id];
-  const multiplier = MULTIPLE_VALUES[category.id];
+  const options = categoryOptions(category.id);
+  const sublabel = categorySublabel(category.id);
+  const isOpenHere = openCell?.categoryIndex === category.index;
+  const openParticipant = isOpenHere
+    ? participants.find((p) => p.id === openCell?.participantId)
+    : undefined;
+  const openRound = openParticipant
+    ? rounds.find(
+        (r) => r.match_player_id === openParticipant.id && r.round_index === category.index,
+      )
+    : undefined;
 
   return (
     <>
-      <div className="sticky left-0 z-10 flex items-center bg-white px-2 py-2 font-quicksand text-sm font-bold text-[#666]">
-        {category.label}
+      <div className="sticky left-0 z-10 flex items-center border-b border-[#f0ede3] bg-white px-2 py-2">
+        <CategoryLabel category={category} />
       </div>
       {participants.map((participant) => {
         const round = rounds.find(
           (r) => r.match_player_id === participant.id && r.round_index === category.index,
         );
-        const key = round ? `${round.id}-${round.points}` : "empty";
+        const isThisOpen = isOpenHere && openCell?.participantId === participant.id;
         return (
-          <div key={participant.id} className="flex items-center justify-center bg-white px-1 py-2">
-            {suite ? (
-              <SuiteCell
-                key={key}
-                round={round}
+          <div
+            key={participant.id}
+            className="flex items-center justify-center border-b border-[#f0ede3] bg-white px-1 py-2"
+          >
+            {options ? (
+              <button
+                type="button"
                 disabled={disabled}
-                high={suite.high}
-                low={suite.low}
-                onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
-              />
-            ) : fixed !== undefined ? (
-              <FixedValueCell
-                key={key}
-                round={round}
-                disabled={disabled}
-                value={fixed}
-                label={category.label}
-                onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
-              />
-            ) : multiplier !== undefined ? (
-              <MultipleCell
-                key={key}
-                round={round}
-                disabled={disabled}
-                multiplier={multiplier}
-                onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
-              />
+                onClick={() =>
+                  setOpenCell(isThisOpen ? null : { participantId: participant.id, categoryIndex: category.index })
+                }
+                className="flex h-7 w-9 items-center justify-center rounded-lg font-quicksand text-xs font-bold"
+                style={{
+                  border: round ? "2px solid #163D2E" : "1px solid #ddd",
+                  color: round ? "#163D2E" : "#bbb",
+                  background: isThisOpen ? "#FAF1DE" : "transparent",
+                }}
+              >
+                {round ? round.points : "–"}
+              </button>
             ) : (
               <ScoreCell
-                key={key}
+                key={round ? `${round.id}-${round.points}` : "empty"}
                 round={round}
                 participantName={participant.name}
                 disabled={disabled}
@@ -345,7 +387,70 @@ function CategoryRow({
           </div>
         );
       })}
+
+      {options && isOpenHere && openParticipant && (
+        <div
+          className="border-b border-[#f0ede3] bg-white px-3 py-3 shadow-[inset_0_2px_6px_rgba(0,0,0,0.04)]"
+          style={{ gridColumn: "1 / -1" }}
+        >
+          <p className="mb-2 text-center font-quicksand text-[11px] text-[#999]">
+            {openParticipant.name} · {category.label}
+            {sublabel ? ` (${sublabel})` : ""}
+          </p>
+          <PillGrid
+            options={options}
+            current={openRound?.points}
+            onSelect={(value) => {
+              onSave(openParticipant.id, category.index, value, {});
+              setOpenCell(null);
+            }}
+          />
+        </div>
+      )}
     </>
+  );
+}
+
+function PillGrid({
+  options,
+  current,
+  onSelect,
+}: {
+  options: PillOption[];
+  current: number | undefined;
+  onSelect: (value: number) => void;
+}) {
+  const hasSublabels = options.some((o) => o.sublabel);
+  const columns = hasSublabels ? Math.min(options.length, 3) : options.length > 6 ? 4 : options.length;
+
+  return (
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+      {options.map((option) => {
+        const active = current === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onSelect(option.value)}
+            className="flex flex-col items-center justify-center gap-0.5 rounded-lg py-2.5 font-fredoka text-sm font-bold"
+            style={{
+              background: active ? "#163D2E" : "#FAF1DE",
+              color: active ? "#fff" : "#163D2E",
+            }}
+          >
+            {option.label}
+            {option.sublabel && (
+              <span
+                className="font-quicksand text-[8px] font-normal"
+                style={{ color: active ? "#cfd8d1" : "#999" }}
+              >
+                {option.sublabel}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -358,33 +463,45 @@ function SubtotalRows({
 }) {
   return (
     <>
-      <div className="sticky left-0 z-10 flex items-center bg-[#f4efe4] px-2 py-2 font-quicksand text-xs font-bold uppercase text-[#999]">
+      <div className="sticky left-0 z-10 flex items-center bg-[#FAF1DE] px-2 py-2 font-quicksand text-[10px] font-bold uppercase text-[#8a8370]">
         Sous-total
       </div>
       {participants.map((participant) => (
         <div
           key={participant.id}
-          className="flex items-center justify-center bg-[#f4efe4] px-1 py-2 font-quicksand text-sm font-bold text-onjoo-green-900"
+          className="flex items-center justify-center bg-[#FAF1DE] px-1 py-2 font-quicksand text-sm font-bold text-onjoo-green-900"
         >
           {upperSubtotal(rounds, participant.id)}
         </div>
       ))}
-      <div className="sticky left-0 z-10 flex items-center bg-[#f4efe4] px-2 py-2 font-quicksand text-xs font-bold uppercase text-[#999]">
+      <div className="sticky left-0 z-10 flex items-center bg-[#FAF1DE] px-2 pt-2 font-quicksand text-[10px] font-bold uppercase text-[#8a8370]">
         Bonus ({DEFAULT_SETTINGS.bonusThreshold}+)
       </div>
       {participants.map((participant) => {
         const subtotal = upperSubtotal(rounds, participant.id);
         const bonus = upperBonus(subtotal, DEFAULT_SETTINGS);
-        // Sous le seuil : combien il manque encore (négatif), en positif
-        // dès que le bonus est acquis — repère visuel type "reste à faire".
-        const remaining = subtotal - DEFAULT_SETTINGS.bonusThreshold;
         return (
           <div
             key={participant.id}
-            className="flex items-center justify-center bg-[#f4efe4] px-1 py-2 font-quicksand text-sm font-bold"
+            className="flex items-center justify-center bg-[#FAF1DE] px-1 pt-2 font-quicksand text-sm font-bold"
             style={{ color: bonus > 0 ? "#163D2E" : "#bbb" }}
           >
-            {bonus > 0 ? `+${bonus}` : remaining}
+            {bonus > 0 ? `+${bonus}` : "–"}
+          </div>
+        );
+      })}
+      <div className="sticky left-0 z-10 border-b border-[#ece5d3] bg-[#FAF1DE] px-2 pb-2" />
+      {participants.map((participant) => {
+        const subtotal = upperSubtotal(rounds, participant.id);
+        const bonus = upperBonus(subtotal, DEFAULT_SETTINGS);
+        const remaining = DEFAULT_SETTINGS.bonusThreshold - subtotal;
+        return (
+          <div
+            key={participant.id}
+            className="flex items-center justify-center border-b border-[#ece5d3] bg-[#FAF1DE] px-1 pb-2 text-center font-quicksand text-[9px]"
+            style={{ color: "#b3ab95" }}
+          >
+            {bonus > 0 ? "" : `encore ${remaining} pts`}
           </div>
         );
       })}
@@ -392,118 +509,83 @@ function SubtotalRows({
   );
 }
 
-function SuiteCell({
-  round,
-  disabled,
-  high,
-  low,
-  onSave,
-}: {
-  round: Round | undefined;
-  disabled: boolean;
-  high: number;
-  low: number;
-  onSave: (points: number, detail: RoundDetail) => void;
-}) {
-  const current = round?.points;
-
+function DiePips({ face }: { face: number }) {
+  const positions: Record<number, [number, number][]> = {
+    1: [[2, 2]],
+    2: [
+      [1, 1],
+      [3, 3],
+    ],
+    3: [
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ],
+    4: [
+      [1, 1],
+      [3, 1],
+      [1, 3],
+      [3, 3],
+    ],
+    5: [
+      [1, 1],
+      [3, 1],
+      [2, 2],
+      [1, 3],
+      [3, 3],
+    ],
+    6: [
+      [1, 1],
+      [3, 1],
+      [1, 2],
+      [3, 2],
+      [1, 3],
+      [3, 3],
+    ],
+  };
+  const pips = positions[face] ?? [];
   return (
-    <div className="flex flex-col items-center gap-1">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onSave(high, {})}
-        className="w-full rounded-full px-2 py-1 font-quicksand text-[11px] font-bold"
-        style={{
-          background: current === high ? "#163D2E" : "#FAF1DE",
-          color: current === high ? "#fff" : "#163D2E",
-        }}
-      >
-        Haut · {high}
-      </button>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onSave(low, {})}
-        className="w-full rounded-full px-2 py-1 font-quicksand text-[11px] font-bold"
-        style={{
-          background: current === low ? "#163D2E" : "#FAF1DE",
-          color: current === low ? "#fff" : "#163D2E",
-        }}
-      >
-        Bas · {low}
-      </button>
-    </div>
-  );
-}
-
-function FixedValueCell({
-  round,
-  disabled,
-  value,
-  label,
-  onSave,
-}: {
-  round: Round | undefined;
-  disabled: boolean;
-  value: number;
-  label: string;
-  onSave: (points: number, detail: RoundDetail) => void;
-}) {
-  const achieved = round?.points === value;
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onSave(achieved ? 0 : value, {})}
-      className="rounded-full px-3 py-2 font-quicksand text-xs font-bold"
-      style={{
-        background: achieved ? "#163D2E" : "#FAF1DE",
-        color: achieved ? "#fff" : "#163D2E",
-      }}
+    <div
+      className="grid"
+      style={{ gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "repeat(3,1fr)", width: 16, height: 16 }}
     >
-      {achieved ? `${label} ✓` : `${value} pts`}
-    </button>
+      {pips.map(([col, row], i) => (
+        <div
+          key={i}
+          style={{
+            gridColumn: col,
+            gridRow: row,
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "#163D2E",
+            justifySelf: "center",
+            alignSelf: "center",
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
-function MultipleCell({
-  round,
-  disabled,
-  multiplier,
-  onSave,
-}: {
-  round: Round | undefined;
-  disabled: boolean;
-  multiplier: number;
-  onSave: (points: number, detail: RoundDetail) => void;
-}) {
-  const current = round?.points;
-  const faces = [1, 2, 3, 4, 5, 6];
-
+function BrelanIcon() {
   return (
-    <div className="grid grid-cols-2 gap-1">
-      {faces.map((face) => {
-        const points = face * multiplier;
-        const active = current === points;
-        return (
-          <button
-            key={face}
-            type="button"
-            disabled={disabled}
-            onClick={() => onSave(points, {})}
-            className="rounded-md px-1.5 py-1 font-quicksand text-[11px] font-bold"
-            style={{
-              background: active ? "#163D2E" : "#FAF1DE",
-              color: active ? "#fff" : "#163D2E",
-            }}
-          >
-            {points}
-          </button>
-        );
-      })}
-    </div>
+    <svg width="14" height="14" viewBox="0 0 100 100">
+      <rect x="8" y="8" width="34" height="34" rx="6" fill="#163D2E" />
+      <rect x="34" y="34" width="34" height="34" rx="6" fill="#163D2E" opacity="0.6" />
+      <rect x="58" y="58" width="34" height="34" rx="6" fill="#163D2E" opacity="0.35" />
+    </svg>
+  );
+}
+
+function CarreIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 100 100">
+      <rect x="6" y="6" width="40" height="40" rx="6" fill="#163D2E" />
+      <rect x="54" y="6" width="40" height="40" rx="6" fill="#163D2E" opacity="0.7" />
+      <rect x="6" y="54" width="40" height="40" rx="6" fill="#163D2E" opacity="0.45" />
+      <rect x="54" y="54" width="40" height="40" rx="6" fill="#163D2E" opacity="0.25" />
+    </svg>
   );
 }
 
@@ -554,7 +636,7 @@ function ScoreCell({
           }
         }}
         placeholder="–"
-        className="h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
+        className="h-9 w-11 rounded-lg border text-center font-quicksand text-sm font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
         style={{ borderWidth: 1, borderColor: "#ddd" }}
       />
     </div>
