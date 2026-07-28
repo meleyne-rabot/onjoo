@@ -254,6 +254,8 @@ export function AscenseurScoreScreen({
         <span className="badge">Total partie : {matchTotal}</span>
       </div>
 
+      <RoundOverview roundPlan={roundPlan} activeRoundIndex={activeRoundIndex} isCompleted={isCompleted} />
+
       {!turnOrderSet && !isCompleted && (
         <div className="card flex flex-col gap-3">
           <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-onjoo-green-900">
@@ -367,6 +369,43 @@ export function AscenseurScoreScreen({
   );
 }
 
+function RoundOverview({
+  roundPlan,
+  activeRoundIndex,
+  isCompleted,
+}: {
+  roundPlan: RoundPlan[];
+  activeRoundIndex: number;
+  isCompleted: boolean;
+}) {
+  if (roundPlan.length === 0) return null;
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-[#eee] bg-white px-3 py-2.5">
+      <div className="flex items-center gap-1.5">
+        {roundPlan.map((r) => {
+          const isPast = isCompleted || r.index < activeRoundIndex;
+          const isActive = !isCompleted && r.index === activeRoundIndex;
+          const label = r.hasTrump ? String(r.cards) : "SA";
+          return (
+            <div
+              key={r.index}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-quicksand text-[11px] font-bold"
+              style={{
+                background: isActive ? "#163D2E" : isPast ? "#FAF1DE" : "#f4efe4",
+                color: isActive ? "#fff" : isPast ? "#163D2E" : "#bbb",
+                border: !r.hasTrump ? "2px solid #E9A23B" : "none",
+              }}
+            >
+              {label}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function RoundBlock({
   round,
   disabled,
@@ -397,8 +436,8 @@ function RoundBlock({
         style={{ gridColumn: "1 / -1" }}
       >
         <span className="font-quicksand text-xs font-bold text-onjoo-green-900">
-          T{round.index} · {round.cards} carte{round.cards > 1 ? "s" : ""} ·{" "}
-          {round.hasTrump ? "Atout" : "Sans atout"}
+          {round.cards} carte{round.cards > 1 ? "s" : ""}
+          {!round.hasTrump ? " SA" : ""}
         </span>
         <span
           className="font-quicksand text-[11px] font-bold"
@@ -416,6 +455,7 @@ function RoundBlock({
           (r) => r.match_player_id === participant.id && r.round_index === round.index,
         );
         const position = bidOrder.indexOf(participant.id) + 1;
+        const isLastBidder = position === bidOrder.length;
         return (
           <div
             key={participant.id}
@@ -428,6 +468,8 @@ function RoundBlock({
               participantName={participant.name}
               max={round.cards}
               disabled={disabled}
+              invalid={forbidden && isLastBidder}
+              alertMessage={`⚠️ Total = ${round.cards}, change ton pari`}
               onSave={(value) => onSaveBid(participant.id, round.index, value)}
             />
           </div>
@@ -475,12 +517,16 @@ function NumberCell({
   participantName,
   max,
   disabled,
+  invalid,
+  alertMessage,
   onSave,
 }: {
   value: number | undefined;
   participantName: string;
   max: number;
   disabled: boolean;
+  invalid?: boolean;
+  alertMessage?: string;
   onSave: (value: number) => void;
 }) {
   const [text, setText] = useState(value !== undefined ? String(value) : "");
@@ -492,6 +538,8 @@ function NumberCell({
     onSave(n);
   }
 
+  const showAlert = invalid && !focused;
+
   return (
     <div className="relative flex items-center justify-center">
       {focused && (
@@ -500,6 +548,14 @@ function NumberCell({
           style={{ background: "#163D2E" }}
         >
           {participantName}
+        </span>
+      )}
+      {showAlert && alertMessage && (
+        <span
+          className="absolute bottom-full z-30 mb-1 whitespace-nowrap rounded-full px-2.5 py-1 font-quicksand text-[10px] font-bold text-white"
+          style={{ background: "#d64545" }}
+        >
+          {alertMessage}
         </span>
       )}
       <input
@@ -522,8 +578,12 @@ function NumberCell({
           }
         }}
         placeholder="–"
-        className="h-9 w-11 rounded-lg border text-center font-quicksand text-sm font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
-        style={{ borderWidth: 1, borderColor: "#ddd" }}
+        className="h-9 w-11 rounded-lg border text-center font-quicksand text-sm font-bold focus:outline-none disabled:opacity-70"
+        style={{
+          borderWidth: invalid ? 2 : 1,
+          borderColor: invalid ? "#d64545" : "#ddd",
+          color: invalid ? "#d64545" : "#163D2E",
+        }}
       />
     </div>
   );
