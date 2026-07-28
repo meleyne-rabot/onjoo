@@ -32,6 +32,7 @@ export function SkyjoScoreScreen({
   initialStatus,
 }: {
   matchId: string;
+  leagueId: string;
   gameCode: string;
   participants: Participant[];
   initialRounds: Round[];

@@ -6,15 +6,15 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import {
-  activeRoundIndex,
+  CATEGORIES,
   cumulativeTotals,
+  DEFAULT_SETTINGS,
   determineWinners,
-  lastRoundIndexWithData,
-  playersApproachingTarget,
-  playersOverTarget,
-  TARGET_SCORE,
+  upperBonus,
+  upperSubtotal,
   type Round,
   type RoundDetail,
+  type YamsSettings,
 } from "./calc";
 
 type Participant = {
@@ -24,8 +24,9 @@ type Participant = {
   avatarShape: string;
 };
 
-export function Flip7ScoreScreen({
+export function YamsScoreScreen({
   matchId,
+  leagueId,
   gameCode,
   participants,
   initialRounds,
@@ -45,12 +46,11 @@ export function Flip7ScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
-  // Le conteneur qui défile horizontalement devient malgré lui aussi la
-  // référence de défilement vertical (effet de bord CSS), ce qui casse
-  // le sticky top/bottom de l'en-tête et du total s'ils sont dedans. On
-  // les sort donc dans leurs propres conteneurs, ancrés sur le scroll
-  // réel de la page, et on synchronise leur défilement horizontal en JS
-  // avec celui du corps du tableau.
+  const [settings, setSettings] = useState<YamsSettings>(DEFAULT_SETTINGS);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Cf. Qwirkle/Skyjo/Flip 7 : le conteneur à défilement horizontal
+  // devient malgré lui aussi la référence de défilement vertical, donc
+  // en-tête et total sont dans leurs propres conteneurs synchronisés.
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const totalScrollRef = useRef<HTMLDivElement>(null);
@@ -61,10 +61,21 @@ export function Flip7ScoreScreen({
     if (totalScrollRef.current) totalScrollRef.current.scrollLeft = left;
   }
 
-  const participantIds = useMemo(
-    () => participants.map((p) => p.id),
-    [participants],
-  );
+  const participantIds = useMemo(() => participants.map((p) => p.id), [participants]);
+
+  useEffect(() => {
+    supabase
+      .from("league_game_settings")
+      .select("settings")
+      .eq("league_id", leagueId)
+      .eq("game_code", "yams")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.settings && typeof data.settings === "object") {
+          setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+        }
+      });
+  }, [supabase, leagueId]);
 
   useEffect(() => {
     const channel = supabase
@@ -102,15 +113,11 @@ export function Flip7ScoreScreen({
     };
   }, [supabase, matchId]);
 
-  const totals = cumulativeTotals(rounds, participantIds);
+  const totals = cumulativeTotals(rounds, participantIds, settings);
   const matchTotal = Object.values(totals).reduce((sum, v) => sum + v, 0);
-  const activeRound = activeRoundIndex(rounds, participantIds);
-  const lastIndex = lastRoundIndexWithData(rounds);
   const isCompleted = status === "completed";
   const winners = isCompleted ? determineWinners(totals) : [];
   const winnerPoints = winners.length > 0 ? totals[winners[0]] ?? 0 : 0;
-  const overTarget = !isCompleted ? playersOverTarget(totals) : [];
-  const approachingTarget = !isCompleted ? playersApproachingTarget(totals) : [];
 
   function saveCell(matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) {
     startTransition(async () => {
@@ -119,13 +126,6 @@ export function Flip7ScoreScreen({
         { onConflict: "match_player_id,round_index" },
       );
       if (error) console.error("saveCell failed:", error.message);
-    });
-  }
-
-  function undoLastRound() {
-    if (lastIndex === null) return;
-    startTransition(async () => {
-      await supabase.from("rounds").delete().eq("match_id", matchId).eq("round_index", lastIndex);
     });
   }
 
@@ -162,10 +162,18 @@ export function Flip7ScoreScreen({
     });
   }
 
-  const roundIndices = isCompleted
-    ? Array.from(new Set(rounds.map((r) => r.round_index))).sort((a, b) => a - b)
-    : Array.from({ length: activeRound }, (_, i) => i + 1);
-  const gridTemplateColumns = `52px repeat(${participants.length}, minmax(92px, 1fr))`;
+  async function saveSettings(next: YamsSettings) {
+    setSettings(next);
+    await supabase
+      .from("league_game_settings")
+      .upsert(
+        { league_id: leagueId, game_code: "yams", settings: next, updated_at: new Date().toISOString() },
+        { onConflict: "league_id,game_code" },
+      );
+    setSettingsOpen(false);
+  }
+
+  const gridTemplateColumns = `110px repeat(${participants.length}, minmax(92px, 1fr))`;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8 sm:px-6">
@@ -188,10 +196,7 @@ export function Flip7ScoreScreen({
               ))}
           </div>
           <span className="badge">{winnerPoints} pts</span>
-          <button
-            onClick={() => router.push(`/games/${gameCode}`)}
-            className="btn-primary mt-2"
-          >
+          <button onClick={() => router.push(`/games/${gameCode}`)} className="btn-primary mt-2">
             Voir l&apos;historique
           </button>
         </div>
@@ -199,12 +204,22 @@ export function Flip7ScoreScreen({
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <RulesButton gameCode="flip7" gameName="Flip 7" />
+          <RulesButton gameCode="yams" gameName="Yams" />
+          {!isCompleted && (
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Réglages du jeu"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-[#ddd] text-lg"
+            >
+              ⚙️
+            </button>
+          )}
           <div>
-            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Flip 7</h1>
+            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yams</h1>
             {!isCompleted && (
               <p className="font-quicksand text-sm text-[#777]">
-                Un tour se sauvegarde tout seul dès que tu saisis un score.
+                Remplis les catégories dans l&apos;ordre que tu veux.
               </p>
             )}
           </div>
@@ -212,25 +227,9 @@ export function Flip7ScoreScreen({
         <span className="badge">Total partie : {matchTotal}</span>
       </div>
 
-      {overTarget.length > 0 && (
-        <div className="card flex items-center gap-2" style={{ borderColor: "#d64545" }}>
-          <span className="font-quicksand text-sm font-semibold" style={{ color: "#d64545" }}>
-            {participants
-              .filter((p) => overTarget.includes(p.id))
-              .map((p) => p.name)
-              .join(", ")}{" "}
-            {overTarget.length > 1 ? "ont" : "a"} atteint {TARGET_SCORE} pts — la partie peut se
-            terminer.
-          </span>
-        </div>
-      )}
-
       <div className="rounded-xl border border-[#eee]">
         <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
-          <div
-            className="grid"
-            style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
-          >
+          <div className="grid" style={{ gridTemplateColumns }}>
             <div />
             {participants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
@@ -244,47 +243,39 @@ export function Flip7ScoreScreen({
         </div>
 
         <div ref={bodyScrollRef} onScroll={syncHorizontalScroll} className="overflow-x-auto">
-          <div
-            className="grid gap-px bg-[#eee]"
-            style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
-          >
-            {roundIndices.map((roundIndex) => (
-              <RoundRow
-                key={roundIndex}
-                roundIndex={roundIndex}
-                isActive={!isCompleted && roundIndex === activeRound}
+          <div className="grid gap-px bg-[#eee]" style={{ gridTemplateColumns }}>
+            {CATEGORIES.map((category) => (
+              <CategoryRow
+                key={category.id}
+                category={category}
                 disabled={isCompleted}
                 participants={participants}
                 rounds={rounds}
                 onSave={saveCell}
               />
             ))}
+            {CATEGORIES.filter((c) => c.section === "upper").length > 0 && (
+              <SubtotalRows
+                rounds={rounds}
+                participants={participants}
+                settings={settings}
+                afterUpperSection
+              />
+            )}
           </div>
         </div>
 
         <div ref={totalScrollRef} className="sticky bottom-0 z-20 overflow-x-hidden rounded-b-xl bg-[#FAF1DE]">
-          <div
-            className="grid"
-            style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
-          >
+          <div className="grid" style={{ gridTemplateColumns }}>
             <div className="flex items-center justify-center px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
               Total
             </div>
             {participants.map((participant) => (
-              <div key={participant.id} className="flex flex-col items-center justify-center gap-0.5 px-1 py-2.5">
-                <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
-                  {totals[participant.id] ?? 0}
-                </span>
-                {overTarget.includes(participant.id) && (
-                  <span className="font-quicksand text-[10px] font-bold" style={{ color: "#d64545" }}>
-                    {TARGET_SCORE}+
-                  </span>
-                )}
-                {approachingTarget.includes(participant.id) && (
-                  <span className="font-quicksand text-[10px] font-bold text-onjoo-sage-500">
-                    reste {TARGET_SCORE - (totals[participant.id] ?? 0)} pour gagner
-                  </span>
-                )}
+              <div
+                key={participant.id}
+                className="flex items-center justify-center px-1 py-2.5 font-fredoka text-lg font-bold text-onjoo-green-900"
+              >
+                {totals[participant.id] ?? 0}
               </div>
             ))}
           </div>
@@ -293,18 +284,9 @@ export function Flip7ScoreScreen({
 
       {!isCompleted && (
         <>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-quicksand text-xs text-onjoo-sage-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-onjoo-sage-500" />
-              Enregistré automatiquement
-            </div>
-            <button
-              onClick={undoLastRound}
-              disabled={isPending || lastIndex === null}
-              className="font-quicksand text-xs font-semibold text-[#999] underline disabled:opacity-40"
-            >
-              Annuler le dernier tour
-            </button>
+          <div className="flex items-center gap-2 font-quicksand text-xs text-onjoo-sage-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-onjoo-sage-500" />
+            Enregistré automatiquement
           </div>
 
           <button
@@ -324,20 +306,26 @@ export function Flip7ScoreScreen({
           </button>
         </>
       )}
+
+      {settingsOpen && (
+        <SettingsModal
+          settings={settings}
+          onCancel={() => setSettingsOpen(false)}
+          onSave={saveSettings}
+        />
+      )}
     </main>
   );
 }
 
-function RoundRow({
-  roundIndex,
-  isActive,
+function CategoryRow({
+  category,
   disabled,
   participants,
   rounds,
   onSave,
 }: {
-  roundIndex: number;
-  isActive: boolean;
+  category: { index: number; label: string };
   disabled: boolean;
   participants: Participant[];
   rounds: Round[];
@@ -345,25 +333,66 @@ function RoundRow({
 }) {
   return (
     <>
-      <div className="sticky left-0 z-10 flex items-center justify-center bg-white px-1 py-2 font-quicksand text-sm font-bold text-[#999]">
-        T{roundIndex}
+      <div className="sticky left-0 z-10 flex items-center bg-white px-2 py-2 font-quicksand text-sm font-bold text-[#666]">
+        {category.label}
       </div>
       {participants.map((participant) => {
         const round = rounds.find(
-          (r) => r.match_player_id === participant.id && r.round_index === roundIndex,
+          (r) => r.match_player_id === participant.id && r.round_index === category.index,
         );
         return (
           <div key={participant.id} className="flex items-center justify-center bg-white px-1 py-2">
             <ScoreCell
-              // Remonte (et resynchronise son état local) si la valeur
-              // change côté serveur (ex. correction sur un autre appareil).
               key={round ? `${round.id}-${round.points}` : "empty"}
               round={round}
               participantName={participant.name}
-              highlighted={isActive}
               disabled={disabled}
-              onSave={(points, detail) => onSave(participant.id, roundIndex, points, detail)}
+              onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
             />
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function SubtotalRows({
+  rounds,
+  participants,
+  settings,
+  afterUpperSection,
+}: {
+  rounds: Round[];
+  participants: Participant[];
+  settings: YamsSettings;
+  afterUpperSection: boolean;
+}) {
+  if (!afterUpperSection) return null;
+  return (
+    <>
+      <div className="sticky left-0 z-10 flex items-center bg-[#f4efe4] px-2 py-2 font-quicksand text-xs font-bold uppercase text-[#999]">
+        Sous-total
+      </div>
+      {participants.map((participant) => (
+        <div
+          key={participant.id}
+          className="flex items-center justify-center bg-[#f4efe4] px-1 py-2 font-quicksand text-sm font-bold text-onjoo-green-900"
+        >
+          {upperSubtotal(rounds, participant.id)}
+        </div>
+      ))}
+      <div className="sticky left-0 z-10 flex items-center bg-[#f4efe4] px-2 py-2 font-quicksand text-xs font-bold uppercase text-[#999]">
+        Bonus ({settings.bonusThreshold}+)
+      </div>
+      {participants.map((participant) => {
+        const bonus = upperBonus(upperSubtotal(rounds, participant.id), settings);
+        return (
+          <div
+            key={participant.id}
+            className="flex items-center justify-center bg-[#f4efe4] px-1 py-2 font-quicksand text-sm font-bold"
+            style={{ color: bonus > 0 ? "#163D2E" : "#bbb" }}
+          >
+            {bonus > 0 ? `+${bonus}` : "—"}
           </div>
         );
       })}
@@ -374,23 +403,15 @@ function RoundRow({
 function ScoreCell({
   round,
   participantName,
-  highlighted,
   disabled,
   onSave,
 }: {
   round: Round | undefined;
   participantName: string;
-  highlighted: boolean;
   disabled: boolean;
   onSave: (points: number, detail: RoundDetail) => void;
 }) {
-  // Pas de useEffect pour resynchroniser depuis `round` : le parent force
-  // un remount (via sa prop key) quand la valeur change côté serveur,
-  // donc cet état initial reste toujours à jour sans re-render en cascade.
   const [value, setValue] = useState(round ? String(round.points) : "");
-  // Le clavier mobile perturbe le sticky de l'en-tête (limitation des
-  // navigateurs, pas un bug d'ici) : pendant la saisie, on affiche le nom
-  // du joueur juste au-dessus de la case pour ne jamais perdre le repère.
   const [focused, setFocused] = useState(false);
 
   function commit() {
@@ -427,8 +448,78 @@ function ScoreCell({
         }}
         placeholder="–"
         className="h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
-        style={{ borderWidth: highlighted ? 2 : 1, borderColor: highlighted ? "#163D2E" : "#ddd" }}
+        style={{ borderWidth: 1, borderColor: "#ddd" }}
       />
+    </div>
+  );
+}
+
+function SettingsModal({
+  settings,
+  onCancel,
+  onSave,
+}: {
+  settings: YamsSettings;
+  onCancel: () => void;
+  onSave: (settings: YamsSettings) => void | Promise<void>;
+}) {
+  const [threshold, setThreshold] = useState(String(settings.bonusThreshold));
+  const [amount, setAmount] = useState(String(settings.bonusAmount));
+  const [pending, setPending] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onCancel}>
+      <div
+        className="card flex w-full max-w-sm flex-col gap-4 rounded-b-none sm:rounded-b-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
+          Réglages Yams de la ligue
+        </span>
+        <p className="font-quicksand text-xs text-[#777]">
+          Chaque famille a sa variante — ajuste le seuil et le bonus de la partie
+          supérieure. S&apos;applique à toutes les parties de Yams de cette ligue.
+        </p>
+        <label className="flex flex-col gap-1">
+          <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-[#999]">
+            Seuil de la partie supérieure
+          </span>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={threshold}
+            onChange={(event) => setThreshold(event.target.value)}
+            className="input-field"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-quicksand text-xs font-bold uppercase tracking-wide text-[#999]">
+            Points de bonus
+          </span>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            className="input-field"
+          />
+        </label>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={async () => {
+            setPending(true);
+            await onSave({
+              bonusThreshold: Number(threshold) || DEFAULT_SETTINGS.bonusThreshold,
+              bonusAmount: Number(amount) || DEFAULT_SETTINGS.bonusAmount,
+            });
+            setPending(false);
+          }}
+          className="btn-primary"
+        >
+          Valider
+        </button>
+      </div>
     </div>
   );
 }

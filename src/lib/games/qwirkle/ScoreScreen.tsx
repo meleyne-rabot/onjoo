@@ -35,6 +35,7 @@ export function QwirkleScoreScreen({
   initialTurnOrderSet,
 }: {
   matchId: string;
+  leagueId: string;
   gameCode: string;
   participants: Participant[];
   initialRounds: Round[];

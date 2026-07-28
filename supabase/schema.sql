@@ -46,6 +46,17 @@ create table games (
   active boolean not null default false
 );
 
+-- Réglages de jeu par ligue (ex. seuil/bonus de la partie supérieure au
+-- Yams) — chaque famille a ses propres variantes de règles, un défaut
+-- raisonnable s'applique tant qu'aucune ligne n'existe.
+create table league_game_settings (
+  league_id uuid not null references leagues (id) on delete cascade,
+  game_code text not null references games (code),
+  settings jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (league_id, game_code)
+);
+
 create table matches (
   id uuid primary key default gen_random_uuid(),
   league_id uuid not null references leagues (id) on delete cascade,
@@ -112,7 +123,8 @@ insert into games (code, name, active) values
   ('uno', 'Uno', false),
   ('flip7', 'Flip 7', true),
   ('ascenseur', 'Ascenseur', false),
-  ('skyjo', 'Skyjo', true);
+  ('skyjo', 'Skyjo', true),
+  ('yams', 'Yams', true);
 
 -- ============================================================
 -- Trigger : le créateur d'une ligue en devient admin automatiquement
@@ -247,6 +259,7 @@ alter table games enable row level security;
 alter table matches enable row level security;
 alter table match_players enable row level security;
 alter table rounds enable row level security;
+alter table league_game_settings enable row level security;
 
 -- leagues: visible aux membres ; création par tout utilisateur authentifié (devient admin via trigger)
 create policy "leagues_select_member" on leagues
@@ -310,6 +323,22 @@ create policy "players_update" on players
 -- games: lecture publique pour les utilisateurs authentifiés, pas d'écriture
 create policy "games_select" on games
   for select to authenticated using (true);
+
+-- league_game_settings
+create policy "league_game_settings_select" on league_game_settings
+  for select using (
+    league_id in (select league_id from league_members where user_id = auth.uid())
+  );
+
+create policy "league_game_settings_insert" on league_game_settings
+  for insert with check (
+    league_id in (select league_id from league_members where user_id = auth.uid())
+  );
+
+create policy "league_game_settings_update" on league_game_settings
+  for update using (
+    league_id in (select league_id from league_members where user_id = auth.uid())
+  );
 
 -- matches
 create policy "matches_select" on matches

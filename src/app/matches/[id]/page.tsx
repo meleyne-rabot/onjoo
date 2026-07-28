@@ -28,7 +28,7 @@ export default async function MatchPage({
 
   const { data: match } = await supabase
     .from("matches")
-    .select("id, game_code, status")
+    .select("id, league_id, game_code, status")
     .eq("id", id)
     .single();
 
@@ -98,6 +98,7 @@ export default async function MatchPage({
   return (
     <ScoreScreen
       matchId={match.id}
+      leagueId={match.league_id}
       gameCode={match.game_code}
       participants={participants}
       initialRounds={rounds ?? []}

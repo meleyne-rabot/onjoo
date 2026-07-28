@@ -22,6 +22,15 @@ export const GAME_RULES: Record<string, string[]> = {
     "Cartes modificateurs : les + s'additionnent, le x2 double le total des cartes numérotées de la manche.",
     "La partie s'arrête dès qu'un joueur atteint 200 pts cumulés. Gagnant : le score total le plus haut.",
   ],
+  yams: [
+    "13 catégories à remplir dans l'ordre de ton choix, une seule fois chacune. 3 lancers de dés par tour, en gardant ceux que tu veux entre chaque lancer.",
+    "Partie supérieure (Un à Six) : la valeur × le nombre de dés de cette face.",
+    "Bonus de la partie supérieure (réglable dans les paramètres ⚙️ de la ligue, 63 pts / +35 pts par défaut).",
+    "Brelan / Carré : la somme des dés identiques obtenus (3 ou 4 dés).",
+    "Full, Petite suite, Grande suite, Yams : valeurs fixes selon vos règles habituelles (à saisir directement).",
+    "Chance : la somme des 5 dés, quelle que soit la combinaison.",
+    "Gagnant : le score total le plus haut.",
+  ],
 };
 
 export function gameRules(code: string): string[] {
