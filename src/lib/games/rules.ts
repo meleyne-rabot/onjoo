@@ -25,7 +25,7 @@ export const GAME_RULES: Record<string, string[]> = {
   yams: [
     "13 catégories à remplir dans l'ordre de ton choix, une seule fois chacune. 3 lancers de dés par tour, en gardant ceux que tu veux entre chaque lancer.",
     "Partie supérieure (Un à Six) : la valeur × le nombre de dés de cette face. Bonus de +35 pts si le sous-total atteint 63 pts.",
-    "Brelan / Carré : la somme des dés identiques uniquement (3 ou 4 dés, pas les 5).",
+    "Brelan / Carré : la somme des dés identiques uniquement (3 ou 4 dés, pas les 5) — choisis directement la face obtenue, le calcul se fait tout seul.",
     "Full : 25 pts fixes.",
     "Petite suite : 30 pts par le haut (3-4-5-6), 20 pts par le bas (1-2-3-4).",
     "Grande suite : 40 pts par le haut (2-3-4-5-6), 30 pts par le bas (1-2-3-4-5).",

@@ -54,6 +54,22 @@ export const SUITE_VALUES: Record<string, { high: number; low: number }> = {
   grande_suite: { high: 40, low: 30 },
 };
 
+// Full et Yams n'ont qu'une seule valeur possible (obtenu ou pas) —
+// simple bouton à cocher plutôt que de taper le nombre.
+export const FIXED_VALUES: Record<string, number> = {
+  full: 25,
+  yams: 50,
+};
+
+// Brelan/Carré ne comptent que les dés identiques (jamais les 5) : la
+// valeur est toujours un multiple de la face obtenue (3 ou 4 dés) —
+// autant proposer directement les 6 valeurs possibles (faces 1 à 6)
+// plutôt que de faire calculer le joueur.
+export const MULTIPLE_VALUES: Record<string, number> = {
+  brelan: 3,
+  carre: 4,
+};
+
 const UPPER_MAX_INDEX = 6;
 
 export function upperSubtotal(rounds: Round[], matchPlayerId: string): number {

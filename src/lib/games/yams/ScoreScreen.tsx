@@ -10,6 +10,8 @@ import {
   cumulativeTotals,
   DEFAULT_SETTINGS,
   determineWinners,
+  FIXED_VALUES,
+  MULTIPLE_VALUES,
   SUITE_VALUES,
   upperBonus,
   upperSubtotal,
@@ -280,6 +282,8 @@ function CategoryRow({
   onSave: (matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) => void;
 }) {
   const suite = SUITE_VALUES[category.id];
+  const fixed = FIXED_VALUES[category.id];
+  const multiplier = MULTIPLE_VALUES[category.id];
 
   return (
     <>
@@ -290,20 +294,38 @@ function CategoryRow({
         const round = rounds.find(
           (r) => r.match_player_id === participant.id && r.round_index === category.index,
         );
+        const key = round ? `${round.id}-${round.points}` : "empty";
         return (
           <div key={participant.id} className="flex items-center justify-center bg-white px-1 py-2">
             {suite ? (
               <SuiteCell
-                key={round ? `${round.id}-${round.points}` : "empty"}
+                key={key}
                 round={round}
                 disabled={disabled}
                 high={suite.high}
                 low={suite.low}
                 onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
               />
+            ) : fixed !== undefined ? (
+              <FixedValueCell
+                key={key}
+                round={round}
+                disabled={disabled}
+                value={fixed}
+                label={category.label}
+                onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
+              />
+            ) : multiplier !== undefined ? (
+              <MultipleCell
+                key={key}
+                round={round}
+                disabled={disabled}
+                multiplier={multiplier}
+                onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
+              />
             ) : (
               <ScoreCell
-                key={round ? `${round.id}-${round.points}` : "empty"}
+                key={key}
                 round={round}
                 participantName={participant.name}
                 disabled={disabled}
@@ -401,6 +423,76 @@ function SuiteCell({
       >
         Bas · {low}
       </button>
+    </div>
+  );
+}
+
+function FixedValueCell({
+  round,
+  disabled,
+  value,
+  label,
+  onSave,
+}: {
+  round: Round | undefined;
+  disabled: boolean;
+  value: number;
+  label: string;
+  onSave: (points: number, detail: RoundDetail) => void;
+}) {
+  const achieved = round?.points === value;
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onSave(achieved ? 0 : value, {})}
+      className="rounded-full px-3 py-2 font-quicksand text-xs font-bold"
+      style={{
+        background: achieved ? "#163D2E" : "#FAF1DE",
+        color: achieved ? "#fff" : "#163D2E",
+      }}
+    >
+      {achieved ? `${label} ✓` : `${value} pts`}
+    </button>
+  );
+}
+
+function MultipleCell({
+  round,
+  disabled,
+  multiplier,
+  onSave,
+}: {
+  round: Round | undefined;
+  disabled: boolean;
+  multiplier: number;
+  onSave: (points: number, detail: RoundDetail) => void;
+}) {
+  const current = round?.points;
+  const faces = [1, 2, 3, 4, 5, 6];
+
+  return (
+    <div className="grid grid-cols-2 gap-1">
+      {faces.map((face) => {
+        const points = face * multiplier;
+        const active = current === points;
+        return (
+          <button
+            key={face}
+            type="button"
+            disabled={disabled}
+            onClick={() => onSave(points, {})}
+            className="rounded-md px-1.5 py-1 font-quicksand text-[11px] font-bold"
+            style={{
+              background: active ? "#163D2E" : "#FAF1DE",
+              color: active ? "#fff" : "#163D2E",
+            }}
+          >
+            {points}
+          </button>
+        );
+      })}
     </div>
   );
 }
