@@ -111,7 +111,7 @@ insert into games (code, name, active) values
   ('qwirkle', 'Qwirkle', true),
   ('uno', 'Uno', false),
   ('flip7', 'Flip 7', true),
-  ('ascenseur', 'Ascenseur', false),
+  ('ascenseur', 'Ascenseur', true),
   ('skyjo', 'Skyjo', true),
   ('yams', 'Yam''s', true),
   ('tarot', 'Tarot', false),

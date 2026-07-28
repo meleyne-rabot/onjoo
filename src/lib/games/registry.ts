@@ -6,6 +6,8 @@ import { Flip7ScoreScreen } from "./flip7/ScoreScreen";
 import * as flip7Calc from "./flip7/calc";
 import { YamsScoreScreen } from "./yams/ScoreScreen";
 import * as yamsCalc from "./yams/calc";
+import { AscenseurScoreScreen } from "./ascenseur/ScoreScreen";
+import * as ascenseurCalc from "./ascenseur/calc";
 
 export const GAME_REGISTRY = {
   qwirkle: {
@@ -27,6 +29,11 @@ export const GAME_REGISTRY = {
     name: "Yam's",
     ScoreScreen: YamsScoreScreen,
     calc: yamsCalc,
+  },
+  ascenseur: {
+    name: "Ascenseur",
+    ScoreScreen: AscenseurScoreScreen,
+    calc: ascenseurCalc,
   },
 } as const;
 

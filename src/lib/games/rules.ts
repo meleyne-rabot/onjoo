@@ -33,6 +33,14 @@ export const GAME_RULES: Record<string, string[]> = {
     "Chance : la somme des 5 dés, quelle que soit la combinaison.",
     "Gagnant : le score total le plus haut.",
   ],
+  ascenseur: [
+    "Le nombre de tours dépend du nombre de joueurs : montée de 1 carte à un max (52 ÷ nb joueurs), un palier au max sans atout, puis descente jusqu'à 1.",
+    "Chaque tour, tout le monde annonce un pari (nombre de plis visés) avant de jouer, puis le réalisé une fois le tour terminé.",
+    "La somme de tous les paris ne peut jamais être égale au nombre de cartes du tour — le dernier à annoncer doit en tenir compte.",
+    "L'ordre d'annonce tourne d'un cran à chaque tour (le premier devient dernier, etc.) — personne n'est désavantagé deux fois de suite.",
+    "Contrat tenu (pari = réalisé) : 10 pts + 5 pts par pli réalisé. Contrat manqué : -5 pts par pli d'écart (au-dessus ou en dessous).",
+    "Gagnant : le score total le plus haut.",
+  ],
 };
 
 export function gameRules(code: string): string[] {
