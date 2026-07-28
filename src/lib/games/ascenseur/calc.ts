@@ -84,7 +84,8 @@ export function totalBids(rounds: Round[], roundIndex: number): number {
 }
 
 // Un tour est "complet" quand tout le monde a un réalisé enregistré —
-// sert à déterminer jusqu'où révéler les tours suivants.
+// sert à déterminer le tour "actif" par défaut (celui qui a encore
+// besoin d'attention).
 export function isRoundComplete(
   rounds: Round[],
   roundIndex: number,
@@ -94,5 +95,15 @@ export function isRoundComplete(
     rounds.some(
       (r) => r.match_player_id === id && r.round_index === roundIndex && r.detail?.actual !== undefined,
     ),
+  );
+}
+
+// true si au moins une donnée (pari ou réalisé, pour n'importe quel
+// joueur) existe pour ce tour — sert à ne jamais masquer un tour où
+// quelque chose a déjà été saisi, même s'il n'est pas "complet" (ex. des
+// paris posés à l'avance sur plusieurs tours avant de jouer les réalisés).
+export function roundHasAnyData(rounds: Round[], roundIndex: number): boolean {
+  return rounds.some(
+    (r) => r.round_index === roundIndex && (r.detail?.bid !== undefined || r.detail?.actual !== undefined),
   );
 }

@@ -11,6 +11,7 @@ import {
   cumulativeTotals,
   determineWinners,
   isRoundComplete,
+  roundHasAnyData,
   roundScore,
   totalBids,
   type Round,
@@ -137,12 +138,20 @@ export function AscenseurScoreScreen({
     return roundPlan[roundPlan.length - 1]?.index ?? 1;
   }, [roundPlan, rounds, participantIds]);
 
-  // Seul le tour actif reste ouvert par défaut ; les tours précédents
-  // sont repliés (accessibles en tapant leur pastille dans le bandeau
-  // récapitulatif) pour ne pas devenir ingérable à 15+ tours.
+  // Le tour actif reste toujours ouvert, ainsi que tout tour qui a déjà
+  // une donnée (pari posé à l'avance par ex.) — sinon des paris saisis
+  // avant de jouer un tour disparaîtraient de l'écran au rechargement,
+  // sans être perdus en base mais invisibles (ce qui est arrivé). Les
+  // tours passés totalement vides restent repliés, dépliables via le
+  // bandeau récapitulatif.
   const visibleRounds = isCompleted
     ? roundPlan
-    : roundPlan.filter((r) => r.index === activeRoundIndex || r.index === expandedRoundIndex);
+    : roundPlan.filter(
+        (r) =>
+          r.index === activeRoundIndex ||
+          r.index === expandedRoundIndex ||
+          roundHasAnyData(rounds, r.index),
+      );
 
   const totals = cumulativeTotals(rounds, participantIds);
   const matchTotal = Object.values(totals).reduce((sum, v) => sum + v, 0);
@@ -445,13 +454,11 @@ function RoundOverview({
           const isPast = isCompleted || r.index < activeRoundIndex;
           const isActive = !isCompleted && r.index === activeRoundIndex;
           const isExpanded = r.index === expandedRoundIndex;
-          const isFuture = !isCompleted && r.index > activeRoundIndex;
           const label = r.hasTrump ? String(r.cards) : "SA";
           return (
             <button
               key={r.index}
               type="button"
-              disabled={isFuture}
               onClick={() => onSelectRound(r.index)}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-quicksand text-[11px] font-bold"
               style={{
