@@ -21,6 +21,19 @@ export default async function PlayersPage() {
     .eq("archived", false)
     .order("created_at", { ascending: true });
 
+  const playerIds = (players ?? []).map((p) => p.id);
+  const winsByPlayer = new Map<string, number>();
+  if (playerIds.length > 0) {
+    const { data: wins } = await supabase
+      .from("match_players")
+      .select("player_id")
+      .in("player_id", playerIds)
+      .eq("is_winner", true);
+    for (const row of wins ?? []) {
+      if (row.player_id) winsByPlayer.set(row.player_id, (winsByPlayer.get(row.player_id) ?? 0) + 1);
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1">
@@ -38,6 +51,7 @@ export default async function PlayersPage() {
             key={player.id}
             player={player}
             isMe={player.linked_user_id === user?.id}
+            wins={winsByPlayer.get(player.id) ?? 0}
           />
         ))}
         {(players ?? []).length === 0 && (

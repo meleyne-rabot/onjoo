@@ -14,7 +14,15 @@ type Player = {
   is_guest: boolean;
 };
 
-export function PlayerRow({ player, isMe }: { player: Player; isMe: boolean }) {
+export function PlayerRow({
+  player,
+  isMe,
+  wins,
+}: {
+  player: Player;
+  isMe: boolean;
+  wins: number;
+}) {
   const [editing, setEditing] = useState(false);
   const [pickingAvatar, setPickingAvatar] = useState(false);
   const [pending, setPending] = useState(false);
@@ -98,10 +106,14 @@ export function PlayerRow({ player, isMe }: { player: Player; isMe: boolean }) {
           <span className="font-quicksand text-base font-medium text-onjoo-green-900">
             {player.name}
           </span>
-          {isMe && <span className="font-quicksand text-xs text-[#777]">Toi</span>}
-          {!isMe && player.is_guest && (
-            <span className="font-quicksand text-xs text-[#777]">Invité</span>
-          )}
+          <div className="flex items-center gap-1.5 font-quicksand text-xs text-[#777]">
+            {isMe && <span>Toi</span>}
+            {!isMe && player.is_guest && <span>Invité</span>}
+            {(isMe || player.is_guest) && <span>·</span>}
+            <span>
+              🏆 {wins} victoire{wins > 1 ? "s" : ""}
+            </span>
+          </div>
         </div>
         <button
           type="button"
