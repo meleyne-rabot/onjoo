@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
+import { RefreshButton } from "@/components/RefreshButton";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   activeRoundIndex,
   cumulativeTotals,
@@ -29,6 +31,7 @@ export function UnoScoreScreen({
   participants,
   initialRounds,
   initialStatus,
+  me,
 }: {
   matchId: string;
   leagueId: string;
@@ -42,6 +45,7 @@ export function UnoScoreScreen({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const { others, editorsByCell, setEditingCell } = useMatchPresence(supabase, matchId, me);
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
@@ -209,6 +213,7 @@ export function UnoScoreScreen({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <RulesButton gameCode="uno" gameName="Uno" />
+          <RefreshButton />
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Uno</h1>
             {!isCompleted && (
@@ -218,7 +223,19 @@ export function UnoScoreScreen({
             )}
           </div>
         </div>
-        <span className="badge">Total partie : {matchTotal}</span>
+        <div className="flex items-center gap-2">
+          {others.length > 0 && (
+            <div className="flex items-center -space-x-2" title={`${others.length} connecté·s`}>
+              {others.map((o) => (
+                <div key={o.id} className="relative">
+                  <AvatarBadge color={o.avatarColor} shape={o.avatarShape} size={26} />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-onjoo-sage-500" />
+                </div>
+              ))}
+            </div>
+          )}
+          <span className="badge">Total partie : {matchTotal}</span>
+        </div>
       </div>
 
       {!isCompleted && (
@@ -277,6 +294,8 @@ export function UnoScoreScreen({
                 participants={participants}
                 rounds={rounds}
                 onSave={saveCell}
+                editorsByCell={editorsByCell}
+                onFocusCell={setEditingCell}
               />
             ))}
           </div>
@@ -382,6 +401,8 @@ function RoundRow({
   participants,
   rounds,
   onSave,
+  editorsByCell,
+  onFocusCell,
 }: {
   roundIndex: number;
   isActive: boolean;
@@ -389,6 +410,8 @@ function RoundRow({
   participants: Participant[];
   rounds: Round[];
   onSave: (matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) => void;
+  editorsByCell: Map<string, { avatarColor: string }>;
+  onFocusCell: (cell: string | null) => void;
 }) {
   return (
     <>
@@ -399,6 +422,7 @@ function RoundRow({
         const round = rounds.find(
           (r) => r.match_player_id === participant.id && r.round_index === roundIndex,
         );
+        const editor = editorsByCell.get(`${participant.id}:${roundIndex}`);
         return (
           <div key={participant.id} className="flex items-center justify-center bg-white px-1 py-2">
             <ScoreCell
@@ -407,7 +431,10 @@ function RoundRow({
               participantName={participant.name}
               highlighted={isActive}
               disabled={disabled}
+              editingColor={editor?.avatarColor}
               onSave={(points, detail) => onSave(participant.id, roundIndex, points, detail)}
+              onFocusCell={() => onFocusCell(`${participant.id}:${roundIndex}`)}
+              onBlurCell={() => onFocusCell(null)}
             />
           </div>
         );
@@ -421,13 +448,19 @@ function ScoreCell({
   participantName,
   highlighted,
   disabled,
+  editingColor,
   onSave,
+  onFocusCell,
+  onBlurCell,
 }: {
   round: Round | undefined;
   participantName: string;
   highlighted: boolean;
   disabled: boolean;
+  editingColor: string | undefined;
   onSave: (points: number, detail: RoundDetail) => void;
+  onFocusCell: () => void;
+  onBlurCell: () => void;
 }) {
   const [value, setValue] = useState(round ? String(round.points) : "");
   const [focused, setFocused] = useState(false);
@@ -454,10 +487,14 @@ function ScoreCell({
         value={value}
         disabled={disabled}
         onChange={(event) => setValue(event.target.value)}
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          setFocused(true);
+          onFocusCell();
+        }}
         onBlur={() => {
           setFocused(false);
           commit();
+          onBlurCell();
         }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -466,8 +503,11 @@ function ScoreCell({
           }
         }}
         placeholder="–"
-        className="h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
-        style={{ borderWidth: highlighted ? 2 : 1, borderColor: highlighted ? "#163D2E" : "#ddd" }}
+        className={`h-11 w-14 rounded-lg border text-center font-quicksand text-lg font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70 ${editingColor ? "animate-pulse" : ""}`}
+        style={{
+          borderWidth: highlighted || editingColor ? 2 : 1,
+          borderColor: editingColor ?? (highlighted ? "#163D2E" : "#ddd"),
+        }}
       />
     </div>
   );

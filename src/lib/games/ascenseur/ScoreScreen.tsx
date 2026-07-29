@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
+import { RefreshButton } from "@/components/RefreshButton";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   bidOrderForRound,
   buildRoundPlan,
@@ -52,6 +54,7 @@ export function AscenseurScoreScreen({
   initialRounds,
   initialStatus,
   initialTurnOrderSet,
+  me,
 }: {
   matchId: string;
   leagueId: string;
@@ -65,6 +68,7 @@ export function AscenseurScoreScreen({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const { others, editorsByCell, setEditingCell } = useMatchPresence(supabase, matchId, me);
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [turnOrderIds, setTurnOrderIds] = useState<string[] | null>(null);
@@ -298,6 +302,7 @@ export function AscenseurScoreScreen({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <RulesButton gameCode="ascenseur" gameName="Ascenseur" />
+          <RefreshButton />
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Ascenseur</h1>
             {!isCompleted && (
@@ -307,7 +312,19 @@ export function AscenseurScoreScreen({
             )}
           </div>
         </div>
-        <span className="badge">Total partie : {matchTotal}</span>
+        <div className="flex items-center gap-2">
+          {others.length > 0 && (
+            <div className="flex items-center -space-x-2" title={`${others.length} connecté·s`}>
+              {others.map((o) => (
+                <div key={o.id} className="relative">
+                  <AvatarBadge color={o.avatarColor} shape={o.avatarShape} size={26} />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-onjoo-sage-500" />
+                </div>
+              ))}
+            </div>
+          )}
+          <span className="badge">Total partie : {matchTotal}</span>
+        </div>
       </div>
 
       <RoundOverview
@@ -371,6 +388,8 @@ export function AscenseurScoreScreen({
                 rounds={rounds}
                 onSaveBid={saveBid}
                 onSaveActual={saveActual}
+                editorsByCell={editorsByCell}
+                onFocusCell={setEditingCell}
               />
             ))}
           </div>
@@ -485,6 +504,8 @@ function RoundBlock({
   rounds,
   onSaveBid,
   onSaveActual,
+  editorsByCell,
+  onFocusCell,
 }: {
   round: RoundPlan;
   disabled: boolean;
@@ -493,6 +514,8 @@ function RoundBlock({
   rounds: Round[];
   onSaveBid: (matchPlayerId: string, roundIndex: number, bid: number) => void;
   onSaveActual: (matchPlayerId: string, roundIndex: number, actual: number) => void;
+  editorsByCell: Map<string, { avatarColor: string }>;
+  onFocusCell: (cell: string | null) => void;
 }) {
   const bidsIn = totalBids(rounds, round.index);
   const allBidsIn = participants.every((p) =>
@@ -541,7 +564,10 @@ function RoundBlock({
               disabled={disabled}
               invalid={forbidden && isLastBidder}
               alertMessage={`⚠️ Total = ${round.cards}, change ton pari`}
+              editingColor={editorsByCell.get(`${participant.id}:${round.index}:bid`)?.avatarColor}
               onSave={(value) => onSaveBid(participant.id, round.index, value)}
+              onFocusCell={() => onFocusCell(`${participant.id}:${round.index}:bid`)}
+              onBlurCell={() => onFocusCell(null)}
             />
           </div>
         );
@@ -566,7 +592,10 @@ function RoundBlock({
               participantName={participant.name}
               max={round.cards}
               disabled={disabled}
+              editingColor={editorsByCell.get(`${participant.id}:${round.index}:actual`)?.avatarColor}
               onSave={(value) => onSaveActual(participant.id, round.index, value)}
+              onFocusCell={() => onFocusCell(`${participant.id}:${round.index}:actual`)}
+              onBlurCell={() => onFocusCell(null)}
             />
             {round_?.detail?.actual !== undefined && round_?.detail?.bid !== undefined && (
               <span
@@ -590,7 +619,10 @@ function NumberCell({
   disabled,
   invalid,
   alertMessage,
+  editingColor,
   onSave,
+  onFocusCell,
+  onBlurCell,
 }: {
   value: number | undefined;
   participantName: string;
@@ -598,7 +630,10 @@ function NumberCell({
   disabled: boolean;
   invalid?: boolean;
   alertMessage?: string;
+  editingColor: string | undefined;
   onSave: (value: number) => void;
+  onFocusCell: () => void;
+  onBlurCell: () => void;
 }) {
   const [text, setText] = useState(value !== undefined ? String(value) : "");
   const [focused, setFocused] = useState(false);
@@ -637,10 +672,14 @@ function NumberCell({
         value={text}
         disabled={disabled}
         onChange={(event) => setText(event.target.value)}
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          setFocused(true);
+          onFocusCell();
+        }}
         onBlur={() => {
           setFocused(false);
           commit();
+          onBlurCell();
         }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -649,10 +688,10 @@ function NumberCell({
           }
         }}
         placeholder="–"
-        className="h-9 w-11 rounded-lg border text-center font-quicksand text-sm font-bold focus:outline-none disabled:opacity-70"
+        className={`h-9 w-11 rounded-lg border text-center font-quicksand text-sm font-bold focus:outline-none disabled:opacity-70 ${editingColor && !invalid ? "animate-pulse" : ""}`}
         style={{
-          borderWidth: invalid ? 2 : 1,
-          borderColor: invalid ? "#d64545" : "#ddd",
+          borderWidth: invalid || editingColor ? 2 : 1,
+          borderColor: invalid ? "#d64545" : (editingColor ?? "#ddd"),
           color: invalid ? "#d64545" : "#163D2E",
         }}
       />

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
-import { useMatchPresence, type CellRef } from "@/hooks/useMatchPresence";
+import { RefreshButton } from "@/components/RefreshButton";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   activeRoundIndex,
   applyFinishBonus,
@@ -249,6 +250,7 @@ export function QwirkleScoreScreen({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <RulesButton gameCode="qwirkle" gameName="Qwirkle" />
+          <RefreshButton />
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
             {!isCompleted && (
@@ -446,7 +448,7 @@ function RoundRow({
   rounds: Round[];
   onSave: (matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) => void;
   editorsByCell: Map<string, { avatarColor: string }>;
-  onFocusCell: (cell: CellRef | null) => void;
+  onFocusCell: (cell: string | null) => void;
 }) {
   return (
     <>
@@ -470,7 +472,7 @@ function RoundRow({
               disabled={disabled}
               editingColor={editor?.avatarColor}
               onSave={(points, detail) => onSave(participant.id, roundIndex, points, detail)}
-              onFocusCell={() => onFocusCell({ matchPlayerId: participant.id, roundIndex })}
+              onFocusCell={() => onFocusCell(`${participant.id}:${roundIndex}`)}
               onBlurCell={() => onFocusCell(null)}
             />
           </div>

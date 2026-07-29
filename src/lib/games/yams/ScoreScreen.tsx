@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
+import { RefreshButton } from "@/components/RefreshButton";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   CATEGORIES,
   categoryOptions,
@@ -38,6 +40,7 @@ export function YamsScoreScreen({
   participants,
   initialRounds,
   initialStatus,
+  me,
 }: {
   matchId: string;
   leagueId: string;
@@ -51,6 +54,7 @@ export function YamsScoreScreen({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const { others, editorsByCell, setEditingCell } = useMatchPresence(supabase, matchId, me);
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
@@ -187,6 +191,7 @@ export function YamsScoreScreen({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <RulesButton gameCode="yams" gameName="Yam's" />
+          <RefreshButton />
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yam&apos;s</h1>
             {!isCompleted && (
@@ -196,7 +201,19 @@ export function YamsScoreScreen({
             )}
           </div>
         </div>
-        <span className="badge">Total partie : {matchTotal}</span>
+        <div className="flex items-center gap-2">
+          {others.length > 0 && (
+            <div className="flex items-center -space-x-2" title={`${others.length} connecté·s`}>
+              {others.map((o) => (
+                <div key={o.id} className="relative">
+                  <AvatarBadge color={o.avatarColor} shape={o.avatarShape} size={26} />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-onjoo-sage-500" />
+                </div>
+              ))}
+            </div>
+          )}
+          <span className="badge">Total partie : {matchTotal}</span>
+        </div>
       </div>
 
       <div className="rounded-xl border border-[#eee]">
@@ -226,6 +243,8 @@ export function YamsScoreScreen({
                 openCell={openCell}
                 setOpenCell={setOpenCell}
                 onSave={saveCell}
+                editorsByCell={editorsByCell}
+                onFocusCell={setEditingCell}
               />
             ))}
             <SubtotalRows rounds={rounds} participants={participants} />
@@ -239,6 +258,8 @@ export function YamsScoreScreen({
                 openCell={openCell}
                 setOpenCell={setOpenCell}
                 onSave={saveCell}
+                editorsByCell={editorsByCell}
+                onFocusCell={setEditingCell}
               />
             ))}
           </div>
@@ -324,6 +345,8 @@ function CategoryRow({
   openCell,
   setOpenCell,
   onSave,
+  editorsByCell,
+  onFocusCell,
 }: {
   category: Category;
   disabled: boolean;
@@ -332,6 +355,8 @@ function CategoryRow({
   openCell: OpenCell | null;
   setOpenCell: (cell: OpenCell | null) => void;
   onSave: (matchPlayerId: string, roundIndex: number, points: number, detail: RoundDetail) => void;
+  editorsByCell: Map<string, { avatarColor: string }>;
+  onFocusCell: (cell: string | null) => void;
 }) {
   const options = categoryOptions(category.id);
   const sublabel = categorySublabel(category.id);
@@ -355,6 +380,7 @@ function CategoryRow({
           (r) => r.match_player_id === participant.id && r.round_index === category.index,
         );
         const isThisOpen = isOpenHere && openCell?.participantId === participant.id;
+        const editor = editorsByCell.get(`${participant.id}:${category.index}`);
         return (
           <div
             key={participant.id}
@@ -364,12 +390,22 @@ function CategoryRow({
               <button
                 type="button"
                 disabled={disabled}
-                onClick={() =>
-                  setOpenCell(isThisOpen ? null : { participantId: participant.id, categoryIndex: category.index })
-                }
-                className="flex h-7 w-9 items-center justify-center rounded-lg font-quicksand text-xs font-bold"
+                onClick={() => {
+                  if (isThisOpen) {
+                    setOpenCell(null);
+                    onFocusCell(null);
+                  } else {
+                    setOpenCell({ participantId: participant.id, categoryIndex: category.index });
+                    onFocusCell(`${participant.id}:${category.index}`);
+                  }
+                }}
+                className={`flex h-7 w-9 items-center justify-center rounded-lg font-quicksand text-xs font-bold ${editor ? "animate-pulse" : ""}`}
                 style={{
-                  border: round ? "2px solid #163D2E" : "1px solid #ddd",
+                  border: editor
+                    ? `2px solid ${editor.avatarColor}`
+                    : round
+                      ? "2px solid #163D2E"
+                      : "1px solid #ddd",
                   color: round ? "#163D2E" : "#bbb",
                   background: isThisOpen ? "#FAF1DE" : "transparent",
                 }}
@@ -382,7 +418,10 @@ function CategoryRow({
                 round={round}
                 participantName={participant.name}
                 disabled={disabled}
+                editingColor={editor?.avatarColor}
                 onSave={(points, detail) => onSave(participant.id, category.index, points, detail)}
+                onFocusCell={() => onFocusCell(`${participant.id}:${category.index}`)}
+                onBlurCell={() => onFocusCell(null)}
               />
             )}
           </div>
@@ -404,6 +443,7 @@ function CategoryRow({
             onSelect={(value) => {
               onSave(openParticipant.id, category.index, value, {});
               setOpenCell(null);
+              onFocusCell(null);
             }}
           />
         </div>
@@ -594,12 +634,18 @@ function ScoreCell({
   round,
   participantName,
   disabled,
+  editingColor,
   onSave,
+  onFocusCell,
+  onBlurCell,
 }: {
   round: Round | undefined;
   participantName: string;
   disabled: boolean;
+  editingColor: string | undefined;
   onSave: (points: number, detail: RoundDetail) => void;
+  onFocusCell: () => void;
+  onBlurCell: () => void;
 }) {
   const [value, setValue] = useState(round ? String(round.points) : "");
   const [focused, setFocused] = useState(false);
@@ -625,10 +671,14 @@ function ScoreCell({
         value={value}
         disabled={disabled}
         onChange={(event) => setValue(event.target.value)}
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          setFocused(true);
+          onFocusCell();
+        }}
         onBlur={() => {
           setFocused(false);
           commit();
+          onBlurCell();
         }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -637,8 +687,8 @@ function ScoreCell({
           }
         }}
         placeholder="–"
-        className="h-9 w-11 rounded-lg border text-center font-quicksand text-sm font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70"
-        style={{ borderWidth: 1, borderColor: "#ddd" }}
+        className={`h-9 w-11 rounded-lg border text-center font-quicksand text-sm font-bold text-onjoo-green-900 focus:outline-none disabled:opacity-70 ${editingColor ? "animate-pulse" : ""}`}
+        style={{ borderWidth: editingColor ? 2 : 1, borderColor: editingColor ?? "#ddd" }}
       />
     </div>
   );

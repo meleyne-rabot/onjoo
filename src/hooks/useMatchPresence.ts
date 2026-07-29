@@ -10,13 +10,11 @@ export type PresenceUser = {
   avatarShape: string;
 };
 
-export type CellRef = { matchPlayerId: string; roundIndex: number };
-
-type PresenceState = PresenceUser & { cell: CellRef | null };
-
-function cellKey(cell: CellRef) {
-  return `${cell.matchPlayerId}:${cell.roundIndex}`;
-}
+// Clé libre par jeu (ex. "matchPlayerId:roundIndex" pour Qwirkle/Skyjo/Flip7/
+// Uno, "matchPlayerId:categoryId" pour Yam's, "matchPlayerId:roundIndex:bid"
+// pour Ascenseur) — chaque écran de score choisit son propre format, le hook
+// ne fait que la diffuser telle quelle.
+type PresenceState = PresenceUser & { cell: string | null };
 
 // Qui d'autre est sur cette partie en ce moment (façon Google Drive), et sur
 // quelle case précise chacun tape (façon Google Docs) — présence Realtime
@@ -60,14 +58,14 @@ export function useMatchPresence(
     };
   }, [supabase, matchId]);
 
-  function setEditingCell(cell: CellRef | null) {
+  function setEditingCell(cell: string | null) {
     channelRef.current?.track({ ...meRef.current, cell });
   }
 
   const editorsByCell = useMemo(() => {
     const map = new Map<string, PresenceState>();
     for (const other of others) {
-      if (other.cell) map.set(cellKey(other.cell), other);
+      if (other.cell) map.set(other.cell, other);
     }
     return map;
   }, [others]);
