@@ -13,6 +13,7 @@ export const GAME_META: Record<string, { label: string; category: GameCategory }
   tarot: { label: "Tarot", category: "cartes" },
   belote: { label: "Belote", category: "cartes" },
   harmonie: { label: "Harmonie", category: "plateau" },
+  six_qui_prend: { label: "6 qui prend", category: "cartes" },
 };
 
 export function gameMeta(code: string) {

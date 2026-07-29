@@ -45,6 +45,9 @@ export default async function GamesPage() {
       return a.name.localeCompare(b.name);
     });
 
+  const activeGames = gamesWithCounts.filter((game) => game.active);
+  const comingSoonGames = gamesWithCounts.filter((game) => !game.active);
+
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-10">
       <header>
@@ -57,22 +60,21 @@ export default async function GamesPage() {
       </header>
 
       <div className="flex flex-col gap-3">
-        {gamesWithCounts.map((game) => {
+        {activeGames.map((game) => {
           const meta = gameMeta(game.code);
-          const tile = (
-            <>
+          return (
+            <Link
+              key={game.code}
+              href={`/games/${game.code}`}
+              className="card flex items-center gap-4"
+            >
               <GameIcon category={meta.category} />
               <div className="flex flex-1 flex-col gap-0.5">
-                <span
-                  className="font-fredoka text-base font-semibold"
-                  style={{ color: game.active ? "#163D2E" : "#999" }}
-                >
+                <span className="font-fredoka text-base font-semibold text-onjoo-green-900">
                   {game.name}
                 </span>
                 <span className="font-quicksand text-sm text-[#777]">
-                  {game.active
-                    ? `${game.count} partie${game.count > 1 ? "s" : ""} jouée${game.count > 1 ? "s" : ""}`
-                    : "Bientôt disponible"}
+                  {`${game.count} partie${game.count > 1 ? "s" : ""} jouée${game.count > 1 ? "s" : ""}`}
                 </span>
               </div>
               {game.logo_url && (
@@ -83,36 +85,50 @@ export default async function GamesPage() {
                   className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
                 />
               )}
-            </>
-          );
-
-          if (!game.active) {
-            return (
-              <div
-                key={game.code}
-                className="card flex cursor-not-allowed items-center gap-4 opacity-50"
-              >
-                {tile}
-              </div>
-            );
-          }
-
-          return (
-            <Link
-              key={game.code}
-              href={`/games/${game.code}`}
-              className="card flex items-center gap-4"
-            >
-              {tile}
             </Link>
           );
         })}
-        {gamesWithCounts.length === 0 && (
+        {activeGames.length === 0 && (
           <p className="font-quicksand text-neutral-500">
             Aucun jeu pour l&apos;instant.
           </p>
         )}
       </div>
+
+      {comingSoonGames.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            Bientôt disponible
+          </p>
+          {comingSoonGames.map((game) => {
+            const meta = gameMeta(game.code);
+            return (
+              <div
+                key={game.code}
+                className="card flex cursor-not-allowed items-center gap-4 opacity-50"
+              >
+                <GameIcon category={meta.category} />
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="font-fredoka text-base font-semibold text-[#999]">
+                    {game.name}
+                  </span>
+                  <span className="font-quicksand text-sm text-[#777]">
+                    Bientôt disponible
+                  </span>
+                </div>
+                {game.logo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
+                  <img
+                    src={game.logo_url}
+                    alt=""
+                    className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }
