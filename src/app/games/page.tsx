@@ -32,10 +32,18 @@ export default async function GamesPage() {
     matchCounts.set(match.game_code, (matchCounts.get(match.game_code) ?? 0) + 1);
   }
 
-  const gamesWithCounts = (gamesResult.data ?? []).map((game) => ({
-    ...game,
-    count: matchCounts.get(game.code) ?? 0,
-  }));
+  // Le plus joué dans CETTE ligue en premier — une ligue qui ne joue qu'à
+  // un seul jeu doit le voir en tête, pas classé alphabétiquement au milieu.
+  const gamesWithCounts = (gamesResult.data ?? [])
+    .map((game) => ({
+      ...game,
+      count: matchCounts.get(game.code) ?? 0,
+    }))
+    .sort((a, b) => {
+      if (a.active !== b.active) return a.active ? -1 : 1;
+      if (a.active && b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-10">
