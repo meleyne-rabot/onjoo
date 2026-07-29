@@ -12,6 +12,7 @@ export const GAME_META: Record<string, { label: string; category: GameCategory }
   yams: { label: "Yam's", category: "des" },
   tarot: { label: "Tarot", category: "cartes" },
   belote: { label: "Belote", category: "cartes" },
+  harmonie: { label: "Harmonie", category: "plateau" },
 };
 
 export function gameMeta(code: string) {

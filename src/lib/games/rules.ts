@@ -41,6 +41,13 @@ export const GAME_RULES: Record<string, string[]> = {
     "Contrat tenu (pari = réalisé) : 10 pts + 5 pts par pli réalisé. Contrat manqué : -5 pts par pli d'écart (au-dessus ou en dessous).",
     "Gagnant : le score total le plus haut.",
   ],
+  uno: [
+    "Seul celui qui vide sa main marque des points à chaque tour : il récupère la somme des cartes restant dans la main de TOUS les autres (les autres ne gagnent ni ne perdent rien ce tour-là).",
+    "Valeur des cartes restantes : chiffres (0-9) = leur valeur, Skip/Reverse/+2 = 20 pts, Joker/+4 = 50 pts.",
+    "Chacun tape ce qu'il lui reste en main en fin de tour ; 0 pour celui qui a gagné — le calcul se fait tout seul.",
+    "Score cible réglable en haut de l'écran (500 pts par défaut, règle officielle).",
+    "Gagnant : le premier à atteindre le score cible (score total le plus haut).",
+  ],
 };
 
 export function gameRules(code: string): string[] {

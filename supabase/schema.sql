@@ -58,7 +58,11 @@ create table matches (
   imported_from_paper boolean not null default false,
   notes text,
   created_by uuid not null references auth.users (id),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Réglages propres à CETTE partie (ex. score cible au Uno) — par
+  -- opposition à une règle de ligue, certains réglages varient d'une
+  -- partie à l'autre selon l'envie du soir.
+  settings jsonb not null default '{}'::jsonb
 );
 
 -- match_players identifie un participant d'une partie : soit un joueur du
@@ -112,13 +116,14 @@ create index match_players_match_id_idx on match_players (match_id);
 
 insert into games (code, name, active) values
   ('qwirkle', 'Qwirkle', true),
-  ('uno', 'Uno', false),
+  ('uno', 'Uno', true),
   ('flip7', 'Flip 7', true),
   ('ascenseur', 'Ascenseur', true),
   ('skyjo', 'Skyjo', true),
   ('yams', 'Yam''s', true),
   ('tarot', 'Tarot', false),
-  ('belote', 'Belote', false);
+  ('belote', 'Belote', false),
+  ('harmonie', 'Harmonie', false);
 
 -- ============================================================
 -- Trigger : le créateur d'une ligue en devient admin automatiquement

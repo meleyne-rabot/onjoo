@@ -8,6 +8,8 @@ import { YamsScoreScreen } from "./yams/ScoreScreen";
 import * as yamsCalc from "./yams/calc";
 import { AscenseurScoreScreen } from "./ascenseur/ScoreScreen";
 import * as ascenseurCalc from "./ascenseur/calc";
+import { UnoScoreScreen } from "./uno/ScoreScreen";
+import * as unoCalc from "./uno/calc";
 
 export const GAME_REGISTRY = {
   qwirkle: {
@@ -34,6 +36,11 @@ export const GAME_REGISTRY = {
     name: "Ascenseur",
     ScoreScreen: AscenseurScoreScreen,
     calc: ascenseurCalc,
+  },
+  uno: {
+    name: "Uno",
+    ScoreScreen: UnoScoreScreen,
+    calc: unoCalc,
   },
 } as const;
 
