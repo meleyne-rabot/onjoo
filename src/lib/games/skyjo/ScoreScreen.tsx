@@ -108,7 +108,6 @@ export function SkyjoScoreScreen({
   }, [supabase, matchId]);
 
   const totals = cumulativeTotals(rounds, participantIds);
-  const matchTotal = Object.values(totals).reduce((sum, v) => sum + v, 0);
   const activeRound = activeRoundIndex(rounds, participantIds);
   const lastIndex = lastRoundIndexWithData(rounds);
   const isCompleted = status === "completed";
@@ -226,7 +225,6 @@ export function SkyjoScoreScreen({
               ))}
             </div>
           )}
-          <span className="badge">Total partie : {matchTotal}</span>
         </div>
       </div>
 

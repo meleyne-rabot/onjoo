@@ -22,14 +22,16 @@ export default async function GamesPage() {
       .select("code, name, active, logo_url")
       .order("active", { ascending: false })
       .order("name", { ascending: true }),
-    supabase.from("matches").select("game_code").eq("league_id", league.id),
+    supabase.from("matches").select("game_code, status").eq("league_id", league.id),
   ]);
 
   if (!myPlayer) redirect("/players/setup");
 
   const matchCounts = new Map<string, number>();
+  const inProgressCodes = new Set<string>();
   for (const match of matchesResult.data ?? []) {
     matchCounts.set(match.game_code, (matchCounts.get(match.game_code) ?? 0) + 1);
+    if (match.status === "in_progress") inProgressCodes.add(match.game_code);
   }
 
   // Le plus joué dans CETTE ligue en premier — une ligue qui ne joue qu'à
@@ -47,6 +49,10 @@ export default async function GamesPage() {
 
   const activeGames = gamesWithCounts.filter((game) => game.active);
   const comingSoonGames = gamesWithCounts.filter((game) => !game.active);
+  // Une partie en cours doit sauter aux yeux tout en haut, avant même le
+  // tri par popularité — on ne veut pas la faire chercher plus bas.
+  const inProgressGames = activeGames.filter((game) => inProgressCodes.has(game.code));
+  const otherActiveGames = activeGames.filter((game) => !inProgressCodes.has(game.code));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-10">
@@ -59,8 +65,46 @@ export default async function GamesPage() {
         </h1>
       </header>
 
+      {inProgressGames.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-onjoo-green-900">
+            Parties en cours
+          </p>
+          {inProgressGames.map((game) => {
+            const meta = gameMeta(game.code);
+            return (
+              <Link
+                key={game.code}
+                href={`/games/${game.code}`}
+                className="card flex items-center gap-4"
+                style={{ borderColor: "#163D2E", borderWidth: 2 }}
+              >
+                <GameIcon category={meta.category} />
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="font-fredoka text-base font-semibold text-onjoo-green-900">
+                    {game.name}
+                  </span>
+                  <span className="flex items-center gap-1.5 font-quicksand text-sm font-semibold text-onjoo-green-900">
+                    <span className="h-1.5 w-1.5 rounded-full bg-onjoo-sage-500" />
+                    Partie en cours — reprendre
+                  </span>
+                </div>
+                {game.logo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
+                  <img
+                    src={game.logo_url}
+                    alt=""
+                    className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
-        {activeGames.map((game) => {
+        {otherActiveGames.map((game) => {
           const meta = gameMeta(game.code);
           return (
             <Link
