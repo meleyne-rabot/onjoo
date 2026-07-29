@@ -22,8 +22,32 @@ export async function NavBar() {
     <>
       <div className="px-4 pt-4 sm:px-6 sm:pt-6">
         <nav className="mx-auto flex max-w-3xl items-center justify-between gap-4 rounded-2xl border border-[#eee] bg-white px-4 py-3 sm:gap-5 sm:px-5 sm:py-3.5">
-          <Link href="/games">
+          <Link href="/games" className="shrink-0">
             <Logo variant="nav" />
+          </Link>
+          <Link
+            href="/profil"
+            className="flex min-w-0 items-center gap-1.5 rounded-full border border-[#eee] bg-onjoo-cream-50 px-3 py-1.5 no-underline"
+            aria-label={`Ligue active : ${league.name}. Changer de ligue`}
+          >
+            <span className="truncate font-quicksand text-xs font-semibold text-onjoo-green-900 sm:text-sm">
+              {league.name}
+            </span>
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              className="shrink-0 text-onjoo-green-900/60"
+            >
+              <path
+                d="M2 3.5L5 6.5L8 3.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </Link>
           <div className="hidden items-center gap-7 sm:flex">
             <Link
