@@ -61,6 +61,7 @@ export function AscenseurScoreScreen({
   initialStatus: "in_progress" | "completed";
   initialFinisherId: string | null;
   initialTurnOrderSet: boolean;
+  me: Participant;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);

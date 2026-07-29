@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GAME_REGISTRY, isSupportedGame } from "@/lib/games/registry";
 import { GUEST_PLACEHOLDER_AVATAR } from "@/lib/avatar";
+import { getMyPlayer } from "@/lib/player";
 
 type PlayerJoin = {
   name: string;
@@ -47,6 +48,7 @@ export default async function MatchPage({
   const [
     { data: matchPlayers, error: matchPlayersError },
     { data: rounds, error: roundsError },
+    myPlayer,
   ] = await Promise.all([
     supabase
       .from("match_players")
@@ -61,6 +63,7 @@ export default async function MatchPage({
       .select("id, match_player_id, round_index, points, detail")
       .eq("match_id", id)
       .order("round_index", { ascending: true }),
+    getMyPlayer(match.league_id),
   ]);
 
   if (matchPlayersError) {
@@ -69,6 +72,7 @@ export default async function MatchPage({
   if (roundsError) {
     throw new Error(roundsError.message);
   }
+  if (!myPlayer) redirect("/players/setup");
 
   const rows = (matchPlayers ?? []) as MatchPlayerRow[];
 
@@ -105,6 +109,12 @@ export default async function MatchPage({
       initialStatus={match.status as "in_progress" | "completed"}
       initialFinisherId={initialFinisherId}
       initialTurnOrderSet={hasTurnOrder}
+      me={{
+        id: myPlayer.id,
+        name: myPlayer.name,
+        avatarColor: myPlayer.avatar_color,
+        avatarShape: myPlayer.avatar_shape,
+      }}
     />
   );
 }
