@@ -139,7 +139,9 @@ insert into games (code, name, active) values
   ('tarot', 'Tarot', false),
   ('belote', 'Belote', false),
   ('harmonie', 'Harmonie', false),
-  ('six_qui_prend', '6 qui prend', false);
+  ('six_qui_prend', '6 qui prend', false),
+  ('molkky', 'Mölkky', false),
+  ('cornhole', 'Cornhole', false);
 
 -- ============================================================
 -- Trigger : le créateur d'une ligue en devient admin automatiquement

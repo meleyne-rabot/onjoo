@@ -81,27 +81,36 @@ export default async function PlayersPage() {
         )}
       </section>
 
-      <form action={addPlayer} className="card flex flex-col gap-3">
-        <h2 className="font-fredoka text-base font-semibold text-onjoo-green-900">
+      <section className="flex flex-col gap-4">
+        <h2 className="font-fredoka text-xl font-bold text-onjoo-green-900">
           Ajouter un joueur
         </h2>
-        <input name="name" required placeholder="Nom" className="input-field" />
-        <label className="flex items-center gap-2 font-quicksand text-sm text-[#666]">
-          <input type="checkbox" name="is_guest" />
-          Joueur invité (sans compte)
-        </label>
-        <SubmitButton pendingText="..." className="btn-secondary">
-          Ajouter
-        </SubmitButton>
-      </form>
 
-      <AddExistingPlayer />
+        <form action={addPlayer} className="card flex flex-col gap-3">
+          <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
+            Créer un profil invité
+          </h3>
+          <p className="font-quicksand text-xs text-[#777]">
+            Sans compte, mais avec un vrai historique : ses parties et ses
+            stats sont suivies comme pour n&apos;importe qui d&apos;autre.
+          </p>
+          <input name="name" required placeholder="Nom" className="input-field" />
+          <SubmitButton pendingText="..." className="btn-secondary">
+            Créer
+          </SubmitButton>
+        </form>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="font-fredoka text-base font-semibold text-onjoo-green-900">
-          Inviter dans la ligue
-        </h2>
-        <InviteLink token={league.invite_token} />
+        <div className="card flex flex-col gap-3">
+          <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
+            Inviter à s&apos;inscrire
+          </h3>
+          <p className="font-quicksand text-xs text-[#777]">
+            La personne rejoint elle-même la ligue avec son propre compte.
+          </p>
+          <InviteLink token={league.invite_token} />
+        </div>
+
+        <AddExistingPlayer />
       </section>
 
       <Link href="/games" className="btn-primary text-center">

@@ -14,6 +14,8 @@ export const GAME_META: Record<string, { label: string; category: GameCategory }
   belote: { label: "Belote", category: "cartes" },
   harmonie: { label: "Harmonie", category: "plateau" },
   six_qui_prend: { label: "6 qui prend", category: "cartes" },
+  molkky: { label: "Mölkky", category: "plateau" },
+  cornhole: { label: "Cornhole", category: "plateau" },
 };
 
 export function gameMeta(code: string) {

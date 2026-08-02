@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { gameMeta } from "@/lib/games/meta";
 import { GameIcon } from "@/components/GameIcon";
+import { MatchDateBadge } from "@/components/MatchDateBadge";
 
 type MatchPlayerRow = {
   final_score: number | null;
@@ -126,6 +127,12 @@ export default async function GameHistoryPage({
                     <span className="font-quicksand text-xs text-[#777]">
                       · {qwirkleCount} Qwirkle{qwirkleCount > 1 ? "s" : ""}
                     </span>
+                  )}
+                  {match.played_at && (
+                    <>
+                      <span className="font-quicksand text-xs text-[#ccc]">·</span>
+                      <MatchDateBadge matchId={match.id} playedAt={match.played_at} />
+                    </>
                   )}
                 </div>
               )}

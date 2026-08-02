@@ -6,9 +6,11 @@ import { getActiveLeague } from "@/lib/league";
 import { getLeagueAvatars } from "@/lib/player";
 import { randomAvatar } from "@/lib/avatar";
 
+// Crée un profil invité (durable, avec stats) — jamais lié à un compte.
+// Un vrai compte ne s'obtient que par lien d'invitation ou en rattachant
+// un profil déjà existant ailleurs (cf. addExistingPlayerToLeague).
 export async function addPlayer(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  const isGuest = formData.get("is_guest") === "on";
   if (!name) return;
 
   const league = await getActiveLeague();
@@ -19,7 +21,7 @@ export async function addPlayer(formData: FormData) {
 
   const { data: created } = await supabase
     .from("players")
-    .insert({ name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: isGuest })
+    .insert({ name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: true })
     .select("id")
     .single();
 

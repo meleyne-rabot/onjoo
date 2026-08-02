@@ -52,10 +52,11 @@ export default async function NewMatchPage({
 
       <form action={addGuestPlayer} className="card flex flex-col gap-3">
         <h2 className="font-fredoka text-base font-semibold text-onjoo-green-900">
-          Nouveau joueur dans la ligue
+          Créer un profil invité
         </h2>
         <p className="font-quicksand text-sm text-[#777]">
-          Accumule des stats dans le temps, comme les autres joueurs.
+          Sans compte, mais avec un vrai historique : ses parties et ses
+          stats sont suivies comme pour n&apos;importe qui d&apos;autre.
         </p>
         <input type="hidden" name="game_code" value={code} />
         <div className="flex gap-2">
@@ -66,7 +67,7 @@ export default async function NewMatchPage({
             className="input-field flex-1"
           />
           <SubmitButton pendingText="..." className="btn-secondary">
-            Ajouter
+            Créer
           </SubmitButton>
         </div>
       </form>

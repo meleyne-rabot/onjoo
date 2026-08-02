@@ -39,9 +39,9 @@ export function AddExistingPlayer() {
 
   return (
     <div className="card flex flex-col gap-3">
-      <h2 className="font-fredoka text-base font-semibold text-onjoo-green-900">
-        Ajouter un joueur déjà connu
-      </h2>
+      <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
+        Ajouter un joueur déjà connu sur Onjoo
+      </h3>
       <p className="font-quicksand text-xs text-[#777]">
         Recherche parmi les joueurs de tes autres ligues — pas besoin de
         renvoyer un lien d&apos;invitation.
