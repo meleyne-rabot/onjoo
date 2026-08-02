@@ -55,6 +55,12 @@ export const GAME_RULES: Record<string, string[]> = {
     "3 lancers ratés d'affilée (0 point) : le joueur est éliminé pour le reste de la partie.",
     "Gagnant : le premier à atteindre exactement 50 points.",
   ],
+  cornhole: [
+    "2 camps (1 ou 2 joueurs chacun). Sac dans le trou = 3 pts, sac sur la planche = 1 pt.",
+    "Scoring par annulation : à chaque tour, seul l'écart entre les deux camps compte. Saisis directement cet écart déjà calculé dans la case du camp qui a marqué — l'autre reste à 0.",
+    "Score cible réglable en haut de l'écran (21 pts par défaut, variantes possibles en moins de points).",
+    "Gagnant : le premier camp à atteindre ou dépasser le score cible.",
+  ],
 };
 
 export function gameRules(code: string): string[] {
