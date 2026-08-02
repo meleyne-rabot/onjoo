@@ -48,6 +48,13 @@ export const GAME_RULES: Record<string, string[]> = {
     "Score cible réglable en haut de l'écran (500 pts par défaut, règle officielle).",
     "Gagnant : le premier à atteindre le score cible (score total le plus haut).",
   ],
+  molkky: [
+    "Formation de départ ci-dessus (officielle) : rangs de 1-2, 3-10-4, 5-11-12-6, puis 7-9-8 le plus loin. Après un lancer, les quilles tombées sont redressées là où elles sont tombées (jamais remises dans la formation initiale).",
+    "Une seule quille tombée : on marque son numéro. Plusieurs quilles tombées d'un coup : on marque le NOMBRE de quilles tombées (pas la somme des numéros).",
+    "Objectif : atteindre exactement 50 points. Un dépassement fait retomber le score à 25.",
+    "3 lancers ratés d'affilée (0 point) : le joueur est éliminé pour le reste de la partie.",
+    "Gagnant : le premier à atteindre exactement 50 points.",
+  ],
 };
 
 export function gameRules(code: string): string[] {

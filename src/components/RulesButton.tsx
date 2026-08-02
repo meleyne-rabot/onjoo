@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { gameRules } from "@/lib/games/rules";
+import { MolkkySetupDiagram } from "@/components/MolkkySetupDiagram";
 
 export function RulesButton({ gameCode, gameName }: { gameCode: string; gameName: string }) {
   const [open, setOpen] = useState(false);
@@ -41,6 +42,7 @@ export function RulesButton({ gameCode, gameName }: { gameCode: string; gameName
                 ✕
               </button>
             </div>
+            {gameCode === "molkky" && <MolkkySetupDiagram />}
             <ul className="flex flex-col gap-2.5">
               {rules.map((rule, index) => (
                 <li key={index} className="flex gap-2 font-quicksand text-sm text-onjoo-green-900">

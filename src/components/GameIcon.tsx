@@ -1,4 +1,4 @@
-export type GameCategory = "cartes" | "tuiles" | "plateau" | "des";
+export type GameCategory = "cartes" | "tuiles" | "plateau" | "des" | "exterieur";
 
 const CREAM = "#FAF1DE";
 
@@ -112,6 +112,20 @@ function CategoryMark({ category, s }: { category: GameCategory; s: number }) {
             />
           ))}
         </div>
+      );
+    case "exterieur":
+      // Placeholder en attendant les vraies icônes "Extérieur" — une
+      // feuille toute simple, cohérente avec le style aplat des autres.
+      return (
+        <div
+          style={{
+            width: 22 * s,
+            height: 22 * s,
+            background: "#5C3A73",
+            borderRadius: "0% 50% 50% 50%",
+            transform: "rotate(45deg)",
+          }}
+        />
       );
   }
 }

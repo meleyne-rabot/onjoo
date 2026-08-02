@@ -10,6 +10,8 @@ import { AscenseurScoreScreen } from "./ascenseur/ScoreScreen";
 import * as ascenseurCalc from "./ascenseur/calc";
 import { UnoScoreScreen } from "./uno/ScoreScreen";
 import * as unoCalc from "./uno/calc";
+import { MolkkyScoreScreen } from "./molkky/ScoreScreen";
+import * as molkkyCalc from "./molkky/calc";
 
 export const GAME_REGISTRY = {
   qwirkle: {
@@ -41,6 +43,11 @@ export const GAME_REGISTRY = {
     name: "Uno",
     ScoreScreen: UnoScoreScreen,
     calc: unoCalc,
+  },
+  molkky: {
+    name: "Mölkky",
+    ScoreScreen: MolkkyScoreScreen,
+    calc: molkkyCalc,
   },
 } as const;
 
