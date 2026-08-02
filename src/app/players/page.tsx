@@ -27,13 +27,13 @@ export default async function PlayersPage() {
 
   const players = (allPlayers ?? []).filter((p) => !p.archived);
 
-  const playerIds = players.map((p) => p.id);
+  const allPlayerIds = (allPlayers ?? []).map((p) => p.id);
   const winsByPlayer = new Map<string, number>();
-  if (playerIds.length > 0) {
+  if (allPlayerIds.length > 0) {
     const { data: wins } = await supabase
       .from("match_players")
       .select("player_id")
-      .in("player_id", playerIds)
+      .in("player_id", allPlayerIds)
       .eq("is_winner", true);
     for (const row of wins ?? []) {
       if (row.player_id) winsByPlayer.set(row.player_id, (winsByPlayer.get(row.player_id) ?? 0) + 1);

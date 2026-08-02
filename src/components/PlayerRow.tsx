@@ -31,22 +31,27 @@ export function PlayerRow({
   const [pickingAvatar, setPickingAvatar] = useState(false);
   const [merging, setMerging] = useState(false);
   const [mergeTarget, setMergeTarget] = useState(otherPlayers[0]?.id ?? "");
+  // Laquelle des deux fiches garder active après fusion : la fiche cliquée
+  // (celle-ci) n'a pas forcément l'historique le plus utile — ex. un compte
+  // lié mais archivé vs. une fiche sans compte mais avec toutes les parties.
+  const [keepSelf, setKeepSelf] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function handleMerge() {
-    const target = otherPlayers.find((p) => p.id === mergeTarget);
-    if (!target) return;
+    const other = otherPlayers.find((p) => p.id === mergeTarget);
+    if (!other) return;
+    const [survivor, absorbed] = keepSelf ? [player, other] : [other, player];
     if (
       !confirm(
-        `Toutes les parties de ${player.name} seront rattachées à ${target.name}. ${player.name} sera ensuite archivé·e. Confirmer ?`,
+        `Toutes les parties de ${absorbed.name} seront rattachées à ${survivor.name}. ${absorbed.name} sera ensuite archivé·e. Confirmer ?`,
       )
     ) {
       return;
     }
     setPending(true);
     setMergeError(null);
-    const result = await mergePlayers(player.id, target.id);
+    const result = await mergePlayers(absorbed.id, survivor.id);
     setPending(false);
     if (result?.error) {
       setMergeError(result.error);
@@ -157,6 +162,7 @@ export function PlayerRow({
             type="button"
             onClick={() => {
               setMergeError(null);
+              setKeepSelf(false);
               setMerging(true);
             }}
             disabled={pending}
@@ -189,10 +195,6 @@ export function PlayerRow({
           <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
             Fusionner {player.name} avec…
           </h3>
-          <p className="font-quicksand text-xs text-[#777]">
-            Toutes les parties de {player.name} seront rattachées à la fiche choisie, qui
-            devient la fiche active. {player.name} sera ensuite archivé·e.
-          </p>
           <select
             value={mergeTarget}
             onChange={(event) => setMergeTarget(event.target.value)}
@@ -205,6 +207,43 @@ export function PlayerRow({
               </option>
             ))}
           </select>
+          {(() => {
+            const other = otherPlayers.find((p) => p.id === mergeTarget);
+            if (!other) return null;
+            const [survivor, absorbed] = keepSelf ? [player, other] : [other, player];
+            return (
+              <>
+                <p className="font-quicksand text-xs font-semibold text-onjoo-green-900">
+                  Quelle fiche garder active ?
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 font-quicksand text-sm text-[#666]">
+                    <input
+                      type="radio"
+                      name="keep"
+                      checked={!keepSelf}
+                      onChange={() => setKeepSelf(false)}
+                    />
+                    {other.name}
+                    {other.archived ? " (archivée)" : ""}
+                  </label>
+                  <label className="flex items-center gap-2 font-quicksand text-sm text-[#666]">
+                    <input
+                      type="radio"
+                      name="keep"
+                      checked={keepSelf}
+                      onChange={() => setKeepSelf(true)}
+                    />
+                    {player.name}
+                  </label>
+                </div>
+                <p className="font-quicksand text-xs text-[#777]">
+                  Toutes les parties de {absorbed.name} seront rattachées à {survivor.name}, qui
+                  devient (ou reste) la fiche active. {absorbed.name} sera ensuite archivé·e.
+                </p>
+              </>
+            );
+          })()}
           {mergeError && (
             <p className="font-quicksand text-xs font-semibold text-onjoo-red-500">
               {mergeError}
