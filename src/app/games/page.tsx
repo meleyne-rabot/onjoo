@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveLeague } from "@/lib/league";
+import { getActiveLeague, getMyRole } from "@/lib/league";
 import { getMyPlayer } from "@/lib/player";
 import { gameMeta } from "@/lib/games/meta";
 import { GameIcon } from "@/components/GameIcon";
@@ -15,8 +15,9 @@ export default async function GamesPage() {
   // Les 3 requêtes sont indépendantes une fois la ligue connue : en
   // parallèle plutôt qu'en série, et un seul aller-retour pour les
   // compteurs de parties (par game_code) plutôt qu'une requête par jeu.
-  const [myPlayer, gamesResult, matchesResult] = await Promise.all([
+  const [myPlayer, myRole, gamesResult, matchesResult] = await Promise.all([
     getMyPlayer(league.id),
+    getMyRole(league.id),
     supabase
       .from("games")
       .select("code, name, active, logo_url")
@@ -25,7 +26,9 @@ export default async function GamesPage() {
     supabase.from("matches").select("game_code, status").eq("league_id", league.id),
   ]);
 
-  if (!myPlayer) redirect("/players/setup");
+  // Un observateur (accès support) n'a jamais de fiche joueur — on ne le
+  // force pas à en créer une juste pour regarder.
+  if (!myPlayer && myRole !== "observer") redirect("/players/setup");
 
   const matchCounts = new Map<string, number>();
   const inProgressCodes = new Set<string>();

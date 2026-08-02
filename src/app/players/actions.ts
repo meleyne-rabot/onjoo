@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
+import { getLeagueAvatars } from "@/lib/player";
 import { randomAvatar } from "@/lib/avatar";
 
 export async function addPlayer(formData: FormData) {
@@ -14,19 +15,17 @@ export async function addPlayer(formData: FormData) {
   if (!league) return;
 
   const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("players")
-    .select("avatar_color, avatar_shape")
-    .eq("league_id", league.id);
-  const avatar = randomAvatar(existing ?? []);
+  const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
-  await supabase.from("players").insert({
-    league_id: league.id,
-    name,
-    avatar_color: avatar.color,
-    avatar_shape: avatar.shape,
-    is_guest: isGuest,
-  });
+  const { data: created } = await supabase
+    .from("players")
+    .insert({ name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: isGuest })
+    .select("id")
+    .single();
+
+  if (created) {
+    await supabase.from("league_players").insert({ league_id: league.id, player_id: created.id });
+  }
 
   revalidatePath("/players");
 }
@@ -55,34 +54,33 @@ export async function renamePlayer(playerId: string, name: string) {
 
 // Archive plutôt que supprimer : un joueur peut avoir un historique de
 // parties (match_players → rounds en cascade) qu'on ne veut jamais
-// effacer par erreur. archived=true le retire juste des listes actives.
+// effacer par erreur. archived=true le retire juste des listes actives de
+// CETTE ligue (l'identité étant globale, un joueur peut être actif dans une
+// ligue et archivé dans une autre).
 export async function archivePlayer(playerId: string) {
+  const league = await getActiveLeague();
+  if (!league) return;
+
   const supabase = await createClient();
-  await supabase.from("players").update({ archived: true }).eq("id", playerId);
+  await supabase
+    .from("league_players")
+    .update({ archived: true })
+    .eq("league_id", league.id)
+    .eq("player_id", playerId);
 
   revalidatePath("/players");
 }
 
-// Fusionne deux fiches d'une même ligue en une seule (cas typique : un
-// doublon créé par erreur, ex. une fiche liée au compte + une fiche sans
-// compte pour la même personne). Ne touche jamais aux `rounds` : elles
-// référencent `match_players.id`, pas le joueur directement — seul
-// `match_players.player_id` doit être réassigné. La fiche source est
-// archivée (jamais supprimée), la cible ressort de l'archive si besoin
-// puisqu'elle devient la fiche survivante.
+// Fusionne deux fiches (doublon du même compte, souvent créé avant que les
+// profils ne deviennent globaux) : réassigne toutes les parties de la
+// source vers la cible, rattache la cible à toutes les ligues où la source
+// était présente, puis neutralise la source (linked_user_id remis à null,
+// jamais supprimée) plutôt que de la supprimer. Ne touche jamais aux
+// rounds — elles référencent match_players.id, pas le joueur directement.
 export async function mergePlayers(sourcePlayerId: string, targetPlayerId: string) {
   if (sourcePlayerId === targetPlayerId) return { error: "Impossible de fusionner une fiche avec elle-même." };
 
   const supabase = await createClient();
-
-  const { data: rows } = await supabase
-    .from("players")
-    .select("id, league_id")
-    .in("id", [sourcePlayerId, targetPlayerId]);
-
-  if (!rows || rows.length !== 2 || rows[0].league_id !== rows[1].league_id) {
-    return { error: "Les deux fiches doivent appartenir à la même ligue." };
-  }
 
   // Garde-fou : si les deux fiches ont déjà chacune une ligne dans la
   // même partie (cas très improbable, mais la réassignation créerait
@@ -109,8 +107,28 @@ export async function mergePlayers(sourcePlayerId: string, targetPlayerId: strin
     .eq("player_id", sourcePlayerId);
   if (reassignError) return { error: reassignError.message };
 
-  await supabase.from("players").update({ archived: true }).eq("id", sourcePlayerId);
-  await supabase.from("players").update({ archived: false }).eq("id", targetPlayerId);
+  // Rattache la cible à toutes les ligues où la source était présente
+  // (fusion possible entre deux ligues différentes), sans écraser un
+  // rattachement déjà existant côté cible.
+  const { data: sourceLeaguePlayers } = await supabase
+    .from("league_players")
+    .select("league_id, archived")
+    .eq("player_id", sourcePlayerId);
+  for (const lp of sourceLeaguePlayers ?? []) {
+    await supabase
+      .from("league_players")
+      .upsert(
+        { league_id: lp.league_id, player_id: targetPlayerId, archived: lp.archived },
+        { onConflict: "league_id,player_id", ignoreDuplicates: true },
+      );
+  }
+
+  // La fiche source est neutralisée AVANT d'être détachée de ses ligues :
+  // players_update exige qu'elle soit encore rattachée à une ligue commune
+  // pour rester modifiable — inverser l'ordre la rendrait invisible avant
+  // ce update, qui échouerait silencieusement (RLS).
+  await supabase.from("players").update({ linked_user_id: null }).eq("id", sourcePlayerId);
+  await supabase.from("league_players").delete().eq("player_id", sourcePlayerId);
 
   revalidatePath("/players");
   return { error: null };
@@ -125,10 +143,12 @@ export type ExistingPlayerResult = {
 };
 
 type LeagueJoin = { name: string };
+type PlayerJoin = { id: string; name: string; avatar_color: string; avatar_shape: string };
 
 // Recherche par nom parmi les fiches des AUTRES ligues où on est déjà
-// membre (jamais un annuaire global) — la policy players_select fait déjà
-// ce filtrage, on exclut juste la ligue active du résultat.
+// membre (jamais un annuaire global) — la policy league_players_select
+// fait déjà ce filtrage, on exclut juste la ligue active et les joueurs
+// déjà rattachés à celle-ci.
 export async function searchExistingPlayers(query: string): Promise<ExistingPlayerResult[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
@@ -137,24 +157,38 @@ export async function searchExistingPlayers(query: string): Promise<ExistingPlay
   if (!league) return [];
 
   const supabase = await createClient();
+
+  const { data: alreadyHere } = await supabase
+    .from("league_players")
+    .select("player_id")
+    .eq("league_id", league.id);
+  const alreadyHereIds = new Set((alreadyHere ?? []).map((row) => row.player_id));
+
   const { data } = await supabase
-    .from("players")
-    .select("id, name, avatar_color, avatar_shape, leagues(name)")
-    .ilike("name", `%${trimmed}%`)
+    .from("league_players")
+    .select("leagues(name), players!inner(id, name, avatar_color, avatar_shape)")
     .neq("league_id", league.id)
     .eq("archived", false)
-    .limit(10);
+    .ilike("players.name", `%${trimmed}%`)
+    .limit(20);
 
-  return (data ?? []).map((p) => {
-    const leagueJoin = (Array.isArray(p.leagues) ? p.leagues[0] : p.leagues) as LeagueJoin | null;
-    return {
-      id: p.id,
-      name: p.name,
-      avatar_color: p.avatar_color,
-      avatar_shape: p.avatar_shape,
+  const seen = new Set<string>();
+  const results: ExistingPlayerResult[] = [];
+  for (const row of data ?? []) {
+    const player = (Array.isArray(row.players) ? row.players[0] : row.players) as PlayerJoin | null;
+    if (!player || seen.has(player.id) || alreadyHereIds.has(player.id)) continue;
+    seen.add(player.id);
+    const leagueJoin = (Array.isArray(row.leagues) ? row.leagues[0] : row.leagues) as LeagueJoin | null;
+    results.push({
+      id: player.id,
+      name: player.name,
+      avatar_color: player.avatar_color,
+      avatar_shape: player.avatar_shape,
       league_name: leagueJoin?.name ?? "",
-    };
-  });
+    });
+    if (results.length >= 10) break;
+  }
+  return results;
 }
 
 export async function addExistingPlayerToLeague(sourcePlayerId: string) {

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GAME_REGISTRY, isSupportedGame } from "@/lib/games/registry";
 import { GUEST_PLACEHOLDER_AVATAR } from "@/lib/avatar";
 import { getMyPlayer } from "@/lib/player";
+import { getMyRole } from "@/lib/league";
 
 type PlayerJoin = {
   name: string;
@@ -49,6 +50,7 @@ export default async function MatchPage({
     { data: matchPlayers, error: matchPlayersError },
     { data: rounds, error: roundsError },
     myPlayer,
+    myRole,
   ] = await Promise.all([
     supabase
       .from("match_players")
@@ -64,6 +66,7 @@ export default async function MatchPage({
       .eq("match_id", id)
       .order("round_index", { ascending: true }),
     getMyPlayer(match.league_id),
+    getMyRole(match.league_id),
   ]);
 
   if (matchPlayersError) {
@@ -72,7 +75,9 @@ export default async function MatchPage({
   if (roundsError) {
     throw new Error(roundsError.message);
   }
-  if (!myPlayer) redirect("/players/setup");
+  // Un observateur (accès support) n'a jamais de fiche joueur — on ne le
+  // force pas à en créer une juste pour regarder/dépanner une partie.
+  if (!myPlayer && myRole !== "observer") redirect("/players/setup");
 
   const rows = (matchPlayers ?? []) as MatchPlayerRow[];
 
@@ -109,12 +114,14 @@ export default async function MatchPage({
       initialStatus={match.status as "in_progress" | "completed"}
       initialFinisherId={initialFinisherId}
       initialTurnOrderSet={hasTurnOrder}
-      me={{
-        id: myPlayer.id,
-        name: myPlayer.name,
-        avatarColor: myPlayer.avatar_color,
-        avatarShape: myPlayer.avatar_shape,
-      }}
+      me={
+        myPlayer && {
+          id: myPlayer.id,
+          name: myPlayer.name,
+          avatarColor: myPlayer.avatar_color,
+          avatarShape: myPlayer.avatar_shape,
+        }
+      }
     />
   );
 }

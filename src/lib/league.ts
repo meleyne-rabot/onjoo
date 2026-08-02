@@ -83,6 +83,27 @@ export const getMyLeagues = cache(async (): Promise<ActiveLeague[]> => {
     .filter((league): league is ActiveLeague => league !== null);
 });
 
+// Rôle du compte connecté dans une ligue donnée. 'observer' : accès
+// support (RLS complète) sans jamais devenir un joueur visible — pas de
+// fiche `players`, donc pas de redirection forcée vers /players/setup ni
+// d'apparition dans les listes/rosters (cf. getMyPlayer, resté distinct).
+export const getMyRole = cache(
+  async (leagueId: string): Promise<string | null> => {
+    const user = await getCurrentUser();
+    if (!user) return null;
+
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("league_members")
+      .select("role")
+      .eq("league_id", leagueId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    return data?.role ?? null;
+  },
+);
+
 export async function setActiveLeagueId(leagueId: string) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, leagueId, {

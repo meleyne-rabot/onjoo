@@ -8,8 +8,12 @@ export type MyPlayer = {
   avatar_shape: string;
 };
 
-// La fiche players liée au compte connecté (linked_user_id), dans une
-// ligue donnée. Distincte des guests : c'est le "toi" dans le roster.
+type AvatarPair = { avatar_color: string; avatar_shape: string };
+
+// La fiche players liée au compte connecté est globale (une seule, quelle
+// que soit la ligue) — league_players fait le lien vers les ligues où elle
+// participe réellement. Renvoie null si le profil n'existe pas encore, OU
+// s'il existe mais n'est pas (encore) rattaché à CETTE ligue précise.
 // Dédupliqué par requête (même clé leagueId).
 export const getMyPlayer = cache(
   async (leagueId: string): Promise<MyPlayer | null> => {
@@ -17,15 +21,40 @@ export const getMyPlayer = cache(
     if (!user) return null;
 
     const supabase = await createClient();
+    const { data } = await supabase
+      .from("players")
+      .select("id, name, avatar_color, avatar_shape, league_players!inner(league_id)")
+      .eq("linked_user_id", user.id)
+      .eq("league_players.league_id", leagueId)
+      .limit(1)
+      .maybeSingle();
 
-    // .limit(1) avant .maybeSingle() : si jamais plusieurs fiches existent
-    // pour ce compte (ex. double-clic passé), on prend la plus ancienne au
-    // lieu de faire planter la requête (.maybeSingle() seul erreure sur
-    // plusieurs lignes).
+    if (!data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      avatar_color: data.avatar_color,
+      avatar_shape: data.avatar_shape,
+    };
+  },
+);
+
+// Le profil global du compte connecté, tous rattachements confondus — sert
+// uniquement à décider si on doit réutiliser un profil déjà créé dans une
+// autre ligue plutôt que d'en recréer un doublon.
+export const getMyGlobalPlayer = cache(
+  async (): Promise<MyPlayer | null> => {
+    const user = await getCurrentUser();
+    if (!user) return null;
+
+    const supabase = await createClient();
+    // .limit(1) avant .maybeSingle() : tant que d'anciens doublons
+    // (une fiche par ligue, avant que le profil ne devienne global) n'ont
+    // pas tous été fusionnés, plusieurs lignes peuvent encore matcher —
+    // on prend la plus ancienne au lieu de faire planter la requête.
     const { data } = await supabase
       .from("players")
       .select("id, name, avatar_color, avatar_shape")
-      .eq("league_id", leagueId)
       .eq("linked_user_id", user.id)
       .order("created_at", { ascending: true })
       .limit(1)
@@ -34,3 +63,29 @@ export const getMyPlayer = cache(
     return data;
   },
 );
+
+// Rattache un profil existant à une ligue — silencieux, idempotent (ex. on
+// rejoint une nouvelle ligue en ayant déjà un profil créé ailleurs).
+export async function attachPlayerToLeague(leagueId: string, playerId: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("league_players")
+    .upsert(
+      { league_id: leagueId, player_id: playerId },
+      { onConflict: "league_id,player_id", ignoreDuplicates: true },
+    );
+}
+
+// Couleurs/formes déjà prises dans une ligue — pour éviter d'assigner deux
+// fois le même avatar à un nouveau joueur (cf. randomAvatar).
+export async function getLeagueAvatars(leagueId: string): Promise<AvatarPair[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("league_players")
+    .select("players(avatar_color, avatar_shape)")
+    .eq("league_id", leagueId);
+
+  return (data ?? [])
+    .map((row) => (Array.isArray(row.players) ? row.players[0] : row.players))
+    .filter((p): p is AvatarPair => Boolean(p));
+}

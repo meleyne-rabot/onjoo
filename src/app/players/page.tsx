@@ -18,14 +18,25 @@ export default async function PlayersPage() {
   // On récupère aussi les fiches archivées : elles doivent rester
   // sélectionnables comme cible/source de fusion (le doublon à résorber
   // est souvent justement l'une des deux déjà archivée), même si elles
-  // n'apparaissent pas dans la liste principale.
-  const { data: allPlayers } = await supabase
-    .from("players")
-    .select("id, name, avatar_color, avatar_shape, is_guest, linked_user_id, archived")
+  // n'apparaissent pas dans la liste principale. archived vit maintenant
+  // sur league_players (par ligue), plus sur players (identité globale).
+  const { data: leaguePlayers } = await supabase
+    .from("league_players")
+    .select("archived, players(id, name, avatar_color, avatar_shape, is_guest, linked_user_id)")
     .eq("league_id", league.id)
     .order("created_at", { ascending: true });
 
-  const players = (allPlayers ?? []).filter((p) => !p.archived);
+  type LeaguePlayerRow = NonNullable<typeof leaguePlayers>[number];
+  function toPlayer(row: LeaguePlayerRow) {
+    const p = Array.isArray(row.players) ? row.players[0] : row.players;
+    if (!p) return null;
+    return { ...p, archived: row.archived };
+  }
+
+  const allPlayers = (leaguePlayers ?? [])
+    .map(toPlayer)
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+  const players = allPlayers.filter((p) => !p.archived);
 
   const allPlayerIds = (allPlayers ?? []).map((p) => p.id);
   const winsByPlayer = new Map<string, number>();

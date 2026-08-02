@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
+import { getLeagueAvatars } from "@/lib/player";
 import { randomAvatar } from "@/lib/avatar";
 
 export async function addGuestPlayer(formData: FormData) {
@@ -15,19 +16,17 @@ export async function addGuestPlayer(formData: FormData) {
   if (!league) return;
 
   const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("players")
-    .select("avatar_color, avatar_shape")
-    .eq("league_id", league.id);
-  const avatar = randomAvatar(existing ?? []);
+  const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
-  await supabase.from("players").insert({
-    league_id: league.id,
-    name,
-    avatar_color: avatar.color,
-    avatar_shape: avatar.shape,
-    is_guest: true,
-  });
+  const { data: created } = await supabase
+    .from("players")
+    .insert({ name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: true })
+    .select("id")
+    .single();
+
+  if (created) {
+    await supabase.from("league_players").insert({ league_id: league.id, player_id: created.id });
+  }
 
   revalidatePath(`/games/${gameCode}/new`);
 }

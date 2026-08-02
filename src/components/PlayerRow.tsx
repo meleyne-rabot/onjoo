@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { AvatarPicker } from "@/components/AvatarPicker";
-import { renamePlayer, archivePlayer, updatePlayerAvatar, mergePlayers } from "@/app/players/actions";
+import {
+  renamePlayer,
+  archivePlayer,
+  updatePlayerAvatar,
+  mergePlayers,
+  searchExistingPlayers,
+} from "@/app/players/actions";
 import type { AvatarColor, AvatarShape } from "@/lib/avatar";
 
 type Player = {
@@ -37,14 +43,29 @@ export function PlayerRow({
   const [keepSelf, setKeepSelf] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Doublon entre DEUX ligues différentes (ex. un compte a une fiche par
+  // ligue avant de devenir global) : le doublon n'apparaît pas dans
+  // otherPlayers (limité à la ligue active), donc recherche à la demande.
+  const [crossLeagueQuery, setCrossLeagueQuery] = useState("");
+  const [crossLeagueResults, setCrossLeagueResults] = useState<OtherPlayer[]>([]);
+
+  const mergeCandidates = [
+    ...otherPlayers,
+    ...crossLeagueResults.filter((r) => !otherPlayers.some((p) => p.id === r.id)),
+  ];
+
+  async function handleCrossLeagueSearch() {
+    const found = await searchExistingPlayers(crossLeagueQuery);
+    setCrossLeagueResults(found.map((f) => ({ id: f.id, name: `${f.name} (${f.league_name})`, archived: false })));
+  }
 
   async function handleMerge() {
-    const other = otherPlayers.find((p) => p.id === mergeTarget);
+    const other = mergeCandidates.find((p) => p.id === mergeTarget);
     if (!other) return;
     const [survivor, absorbed] = keepSelf ? [player, other] : [other, player];
     if (
       !confirm(
-        `Toutes les parties de ${absorbed.name} seront rattachées à ${survivor.name}. ${absorbed.name} sera ensuite archivé·e. Confirmer ?`,
+        `Toutes les parties de ${absorbed.name} seront rattachées à ${survivor.name}, dans toutes les ligues concernées. ${absorbed.name} ne sera plus visible nulle part. Confirmer ?`,
       )
     ) {
       return;
@@ -157,21 +178,19 @@ export function PlayerRow({
         >
           ✎
         </button>
-        {otherPlayers.length > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              setMergeError(null);
-              setKeepSelf(false);
-              setMerging(true);
-            }}
-            disabled={pending}
-            aria-label={`Fusionner ${player.name} avec une autre fiche`}
-            className="rounded-lg p-1.5 text-base"
-          >
-            ⇄
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            setMergeError(null);
+            setKeepSelf(false);
+            setMerging(true);
+          }}
+          disabled={pending}
+          aria-label={`Fusionner ${player.name} avec une autre fiche`}
+          className="rounded-lg p-1.5 text-base"
+        >
+          ⇄
+        </button>
         <button
           type="button"
           onClick={handleArchive}
@@ -195,20 +214,42 @@ export function PlayerRow({
           <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
             Fusionner {player.name} avec…
           </h3>
-          <select
-            value={mergeTarget}
-            onChange={(event) => setMergeTarget(event.target.value)}
-            className="input-field"
-          >
-            {otherPlayers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-                {p.archived ? " (archivée)" : ""}
-              </option>
-            ))}
-          </select>
+          {mergeCandidates.length > 0 && (
+            <select
+              value={mergeTarget}
+              onChange={(event) => setMergeTarget(event.target.value)}
+              className="input-field"
+            >
+              <option value="">— Choisir —</option>
+              {mergeCandidates.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.archived ? " (archivée)" : ""}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="font-quicksand text-xs text-[#777]">
+            Le doublon est dans une autre ligue ? Cherche-le :
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={crossLeagueQuery}
+              onChange={(event) => setCrossLeagueQuery(event.target.value)}
+              placeholder="Nom du joueur…"
+              className="input-field flex-1"
+            />
+            <button
+              type="button"
+              onClick={handleCrossLeagueSearch}
+              disabled={crossLeagueQuery.trim().length < 2}
+              className="btn-ghost"
+            >
+              Chercher
+            </button>
+          </div>
           {(() => {
-            const other = otherPlayers.find((p) => p.id === mergeTarget);
+            const other = mergeCandidates.find((p) => p.id === mergeTarget);
             if (!other) return null;
             const [survivor, absorbed] = keepSelf ? [player, other] : [other, player];
             return (
@@ -238,8 +279,8 @@ export function PlayerRow({
                   </label>
                 </div>
                 <p className="font-quicksand text-xs text-[#777]">
-                  Toutes les parties de {absorbed.name} seront rattachées à {survivor.name}, qui
-                  devient (ou reste) la fiche active. {absorbed.name} sera ensuite archivé·e.
+                  Toutes les parties de {absorbed.name} seront rattachées à {survivor.name}, dans
+                  toutes les ligues concernées. {absorbed.name} ne sera plus visible nulle part.
                 </p>
               </>
             );
@@ -253,7 +294,7 @@ export function PlayerRow({
             <button
               type="button"
               onClick={handleMerge}
-              disabled={pending}
+              disabled={pending || !mergeTarget}
               className="btn-secondary flex-1"
             >
               Fusionner

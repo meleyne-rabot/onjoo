@@ -19,10 +19,13 @@ type PresenceState = PresenceUser & { cell: string | null };
 // Qui d'autre est sur cette partie en ce moment (façon Google Drive), et sur
 // quelle case précise chacun tape (façon Google Docs) — présence Realtime
 // éphémère, jamais écrite en base, juste diffusée aux autres onglets connectés.
+// `me` à null pour un observateur (accès support) : il voit qui est
+// connecté et sur quelle case, mais ne diffuse jamais sa propre présence —
+// invisible pour tout le monde, cf. getMyRole/'observer' dans lib/league.ts.
 export function useMatchPresence(
   supabase: SupabaseClient,
   matchId: string,
-  me: PresenceUser,
+  me: PresenceUser | null,
 ) {
   const [others, setOthers] = useState<PresenceState[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -34,7 +37,7 @@ export function useMatchPresence(
 
   useEffect(() => {
     const channel = supabase.channel(`presence-${matchId}`, {
-      config: { presence: { key: meRef.current.id } },
+      config: meRef.current ? { presence: { key: meRef.current.id } } : {},
     });
     channelRef.current = channel;
 
@@ -43,11 +46,11 @@ export function useMatchPresence(
         const state = channel.presenceState<PresenceState>();
         const list = Object.values(state)
           .map((entries) => entries[0])
-          .filter((entry) => entry && entry.id !== meRef.current.id);
+          .filter((entry) => entry && entry.id !== meRef.current?.id);
         setOthers(list);
       })
       .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
+        if (status === "SUBSCRIBED" && meRef.current) {
           await channel.track({ ...meRef.current, cell: null });
         }
       });
@@ -59,6 +62,7 @@ export function useMatchPresence(
   }, [supabase, matchId]);
 
   function setEditingCell(cell: string | null) {
+    if (!meRef.current) return;
     channelRef.current?.track({ ...meRef.current, cell });
   }
 

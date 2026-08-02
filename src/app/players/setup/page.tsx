@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
-import { getMyPlayer } from "@/lib/player";
+import { getMyPlayer, getMyGlobalPlayer, attachPlayerToLeague } from "@/lib/player";
 import { Logo } from "@/components/Logo";
 import { SubmitButton } from "@/components/SubmitButton";
 import { createMyPlayer } from "./actions";
@@ -12,6 +12,14 @@ export default async function PlayerSetupPage() {
 
   const existing = await getMyPlayer(league.id);
   if (existing) redirect("/games");
+
+  // Un profil existe déjà (créé dans une autre ligue) : on le rattache
+  // silencieusement ici, inutile de redemander "comment on t'appelle ?".
+  const globalPlayer = await getMyGlobalPlayer();
+  if (globalPlayer) {
+    await attachPlayerToLeague(league.id, globalPlayer.id);
+    redirect("/games");
+  }
 
   const user = await getCurrentUser();
 

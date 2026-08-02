@@ -25,12 +25,16 @@ export default async function NewMatchPage({
 
   if (!game || !game.active) notFound();
 
-  const { data: players } = await supabase
-    .from("players")
-    .select("id, name, avatar_color, avatar_shape")
+  const { data: leaguePlayers } = await supabase
+    .from("league_players")
+    .select("players(id, name, avatar_color, avatar_shape)")
     .eq("league_id", league.id)
     .eq("archived", false)
     .order("created_at", { ascending: true });
+
+  const players = (leaguePlayers ?? [])
+    .map((row) => (Array.isArray(row.players) ? row.players[0] : row.players))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   const meta = gameMeta(code);
 

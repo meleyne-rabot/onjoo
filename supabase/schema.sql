@@ -18,26 +18,40 @@ create table leagues (
 create table league_members (
   league_id uuid not null references leagues (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
-  role text not null default 'member' check (role in ('admin', 'member')),
+  -- 'observer' : accès support à la ligue (RLS complète) sans jamais
+  -- devenir un joueur visible — pas de fiche `players` associée.
+  role text not null default 'member' check (role in ('admin', 'member', 'observer')),
   joined_at timestamptz not null default now(),
   primary key (league_id, user_id)
 );
 
+-- players est une identité GLOBALE par compte : un joueur avec compte n'a
+-- qu'une seule fiche, partagée entre toutes ses ligues (linked_user_id
+-- unique tous comptes confondus). Un invité (is_guest, linked_user_id null)
+-- reste local à la ligue où il a été créé — pas d'identité à partager.
+-- league_players fait le lien "quel joueur participe à quelle ligue" ;
+-- avant cette table, players.league_id jouait ce rôle et forçait une
+-- nouvelle fiche (donc un nouvel historique séparé) à chaque nouvelle
+-- ligue rejointe par un même compte.
 create table players (
   id uuid primary key default gen_random_uuid(),
-  league_id uuid not null references leagues (id) on delete cascade,
   name text not null,
   avatar_color text not null,
   avatar_shape text not null,
   is_guest boolean not null default false,
   linked_user_id uuid references auth.users (id),
+  created_at timestamptz not null default now(),
+  constraint players_one_per_linked_user unique (linked_user_id)
+);
+
+create table league_players (
+  league_id uuid not null references leagues (id) on delete cascade,
+  player_id uuid not null references players (id) on delete cascade,
+  -- Par ligue : un joueur peut être actif dans une ligue et archivé dans
+  -- une autre, ça n'a rien à voir avec son identité globale.
   archived boolean not null default false,
   created_at timestamptz not null default now(),
-  -- Un compte ne peut avoir qu'une seule fiche par ligue (linked_user_id
-  -- NULL, ie. les invités, ne sont pas concernés par cette contrainte).
-  -- Absente à l'origine : un double-clic ou un retry pouvait créer un
-  -- doublon, cf. incident du 27/07/2026.
-  constraint players_one_per_user_per_league unique (league_id, linked_user_id)
+  primary key (league_id, player_id)
 );
 
 create table games (
@@ -106,7 +120,8 @@ create table rounds (
 
 create index rounds_match_id_idx on rounds (match_id);
 create index rounds_match_player_id_idx on rounds (match_player_id);
-create index players_league_id_idx on players (league_id);
+create index league_players_league_id_idx on league_players (league_id);
+create index league_players_player_id_idx on league_players (player_id);
 create index matches_league_id_idx on matches (league_id);
 create index match_players_match_id_idx on match_players (match_id);
 
@@ -253,6 +268,10 @@ $$;
 -- ligue active, sans passer par le lien d'invitation
 -- ============================================================
 
+-- Les joueurs étant désormais une identité globale (cf. players/
+-- league_players plus haut), "ajouter un joueur déjà connu" ne recrée
+-- plus jamais de fiche : ça se limite à rattacher son id existant à la
+-- ligue cible (+ league_members si compte lié).
 create function add_existing_player_to_league(p_target_league_id uuid, p_source_player_id uuid)
 returns uuid
 language plpgsql
@@ -260,8 +279,7 @@ security definer
 set search_path = public
 as $$
 declare
-  src record;
-  new_player_id uuid;
+  src_linked_user_id uuid;
 begin
   if not exists (
     select 1 from league_members
@@ -270,46 +288,32 @@ begin
     raise exception 'not_a_league_member';
   end if;
 
-  select name, avatar_color, avatar_shape, is_guest, linked_user_id, league_id
-  into src
-  from players
-  where id = p_source_player_id;
-
-  if src is null then
+  select linked_user_id into src_linked_user_id from players where id = p_source_player_id;
+  if not found then
     raise exception 'player_not_found';
   end if;
 
-  -- On ne peut ajouter que quelqu'un vu dans une ligue où on est déjà soi-même
-  -- membre (pas un annuaire global de tous les joueurs Onjoo).
+  -- On ne peut rattacher que quelqu'un vu dans une ligue où on est déjà
+  -- soi-même membre (pas un annuaire global de tous les joueurs Onjoo).
   if not exists (
-    select 1 from league_members
-    where league_id = src.league_id and user_id = auth.uid()
+    select 1 from league_players lp
+    join league_members lm on lm.league_id = lp.league_id
+    where lp.player_id = p_source_player_id and lm.user_id = auth.uid()
   ) then
     raise exception 'not_a_member_of_source_league';
   end if;
 
-  if src.linked_user_id is not null then
+  if src_linked_user_id is not null then
     insert into league_members (league_id, user_id, role)
-    values (p_target_league_id, src.linked_user_id, 'member')
+    values (p_target_league_id, src_linked_user_id, 'member')
     on conflict (league_id, user_id) do nothing;
-
-    -- Déjà une fiche pour ce compte dans la ligue cible ? On la renvoie
-    -- plutôt que d'en créer une deuxième (violerait de toute façon la
-    -- contrainte players_one_per_user_per_league).
-    select id into new_player_id
-    from players
-    where league_id = p_target_league_id and linked_user_id = src.linked_user_id;
-
-    if new_player_id is not null then
-      return new_player_id;
-    end if;
   end if;
 
-  insert into players (league_id, name, avatar_color, avatar_shape, is_guest, linked_user_id)
-  values (p_target_league_id, src.name, src.avatar_color, src.avatar_shape, src.is_guest, src.linked_user_id)
-  returning id into new_player_id;
+  insert into league_players (league_id, player_id)
+  values (p_target_league_id, p_source_player_id)
+  on conflict (league_id, player_id) do nothing;
 
-  return new_player_id;
+  return p_source_player_id;
 end;
 $$;
 
@@ -368,19 +372,52 @@ create policy "league_members_select" on league_members
 create policy "league_members_delete_self" on league_members
   for delete using (user_id = auth.uid());
 
--- players
+-- players : visible/modifiable si rattaché (via league_players) à une
+-- ligue dont on est membre — l'identité est globale, l'accès reste
+-- toujours borné à "une ligue commune". L'insert est ouvert à tout compte
+-- authentifié : une fiche seule, sans rattachement league_players, n'est
+-- visible de personne (y compris son créateur) tant qu'elle n'est pas
+-- rattachée à une ligue via une policy league_players qui, elle, vérifie
+-- bien l'appartenance.
 create policy "players_select" on players
+  for select using (
+    id in (
+      select lp.player_id from league_players lp
+      join league_members lm on lm.league_id = lp.league_id
+      where lm.user_id = auth.uid()
+    )
+  );
+
+create policy "players_insert" on players
+  for insert with check (auth.uid() is not null);
+
+create policy "players_update" on players
+  for update using (
+    id in (
+      select lp.player_id from league_players lp
+      join league_members lm on lm.league_id = lp.league_id
+      where lm.user_id = auth.uid()
+    )
+  );
+
+-- league_players
+create policy "league_players_select" on league_players
   for select using (
     league_id in (select league_id from league_members where user_id = auth.uid())
   );
 
-create policy "players_insert" on players
+create policy "league_players_insert" on league_players
   for insert with check (
     league_id in (select league_id from league_members where user_id = auth.uid())
   );
 
-create policy "players_update" on players
+create policy "league_players_update" on league_players
   for update using (
+    league_id in (select league_id from league_members where user_id = auth.uid())
+  );
+
+create policy "league_players_delete" on league_players
+  for delete using (
     league_id in (select league_id from league_members where user_id = auth.uid())
   );
 
