@@ -103,6 +103,23 @@ export async function mergePlayers(sourcePlayerId: string, targetPlayerId: strin
     };
   }
 
+  // Comptes liés des deux fiches, récupérés AVANT toute modification : la
+  // cible garde son identité (nom, avatar), mais si elle n'a pas de compte
+  // lié alors que la source en a un, ce compte doit survivre sur la cible —
+  // sinon la personne ne serait plus jamais reconnue en se reconnectant.
+  const { data: playerRows } = await supabase
+    .from("players")
+    .select("id, linked_user_id")
+    .in("id", [sourcePlayerId, targetPlayerId]);
+  const sourceLinkedUserId = playerRows?.find((p) => p.id === sourcePlayerId)?.linked_user_id ?? null;
+  const targetLinkedUserId = playerRows?.find((p) => p.id === targetPlayerId)?.linked_user_id ?? null;
+  if (sourceLinkedUserId && targetLinkedUserId && sourceLinkedUserId !== targetLinkedUserId) {
+    return {
+      error:
+        "Les deux fiches sont liées à des comptes Google différents — fusion annulée, ça ne peut pas être la même personne.",
+    };
+  }
+
   const { error: reassignError } = await supabase
     .from("match_players")
     .update({ player_id: targetPlayerId })
@@ -128,8 +145,17 @@ export async function mergePlayers(sourcePlayerId: string, targetPlayerId: strin
   // La fiche source est neutralisée AVANT d'être détachée de ses ligues :
   // players_update exige qu'elle soit encore rattachée à une ligue commune
   // pour rester modifiable — inverser l'ordre la rendrait invisible avant
-  // ce update, qui échouerait silencieusement (RLS).
+  // ce update, qui échouerait silencieusement (RLS). Neutraliser la source
+  // AVANT de transférer son compte à la cible est aussi obligatoire pour
+  // une autre raison : players_one_per_linked_user est une contrainte
+  // unique, donc la cible ne peut récupérer ce linked_user_id que si la
+  // source ne le détient plus au même instant.
   await supabase.from("players").update({ linked_user_id: null }).eq("id", sourcePlayerId);
+
+  if (sourceLinkedUserId && !targetLinkedUserId) {
+    await supabase.from("players").update({ linked_user_id: sourceLinkedUserId }).eq("id", targetPlayerId);
+  }
+
   await supabase.from("league_players").delete().eq("player_id", sourcePlayerId);
 
   revalidatePath("/players");
