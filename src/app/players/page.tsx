@@ -14,14 +14,19 @@ export default async function PlayersPage() {
   const user = await getCurrentUser();
   const supabase = await createClient();
 
-  const { data: players } = await supabase
+  // On récupère aussi les fiches archivées : elles doivent rester
+  // sélectionnables comme cible/source de fusion (le doublon à résorber
+  // est souvent justement l'une des deux déjà archivée), même si elles
+  // n'apparaissent pas dans la liste principale.
+  const { data: allPlayers } = await supabase
     .from("players")
-    .select("id, name, avatar_color, avatar_shape, is_guest, linked_user_id")
+    .select("id, name, avatar_color, avatar_shape, is_guest, linked_user_id, archived")
     .eq("league_id", league.id)
-    .eq("archived", false)
     .order("created_at", { ascending: true });
 
-  const playerIds = (players ?? []).map((p) => p.id);
+  const players = (allPlayers ?? []).filter((p) => !p.archived);
+
+  const playerIds = players.map((p) => p.id);
   const winsByPlayer = new Map<string, number>();
   if (playerIds.length > 0) {
     const { data: wins } = await supabase
@@ -46,15 +51,18 @@ export default async function PlayersPage() {
       </header>
 
       <section className="flex flex-col gap-3">
-        {(players ?? []).map((player) => (
+        {players.map((player) => (
           <PlayerRow
             key={player.id}
             player={player}
             isMe={player.linked_user_id === user?.id}
             wins={winsByPlayer.get(player.id) ?? 0}
+            otherPlayers={(allPlayers ?? [])
+              .filter((p) => p.id !== player.id)
+              .map((p) => ({ id: p.id, name: p.name, archived: p.archived }))}
           />
         ))}
-        {(players ?? []).length === 0 && (
+        {players.length === 0 && (
           <p className="font-quicksand text-neutral-500">
             Aucun joueur pour l&apos;instant.
           </p>

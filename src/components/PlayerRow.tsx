@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { AvatarPicker } from "@/components/AvatarPicker";
-import { renamePlayer, archivePlayer, updatePlayerAvatar } from "@/app/players/actions";
+import { renamePlayer, archivePlayer, updatePlayerAvatar, mergePlayers } from "@/app/players/actions";
 import type { AvatarColor, AvatarShape } from "@/lib/avatar";
 
 type Player = {
@@ -14,18 +14,46 @@ type Player = {
   is_guest: boolean;
 };
 
+type OtherPlayer = { id: string; name: string; archived: boolean };
+
 export function PlayerRow({
   player,
   isMe,
   wins,
+  otherPlayers,
 }: {
   player: Player;
   isMe: boolean;
   wins: number;
+  otherPlayers: OtherPlayer[];
 }) {
   const [editing, setEditing] = useState(false);
   const [pickingAvatar, setPickingAvatar] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState(otherPlayers[0]?.id ?? "");
+  const [mergeError, setMergeError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  async function handleMerge() {
+    const target = otherPlayers.find((p) => p.id === mergeTarget);
+    if (!target) return;
+    if (
+      !confirm(
+        `Toutes les parties de ${player.name} seront rattachées à ${target.name}. ${player.name} sera ensuite archivé·e. Confirmer ?`,
+      )
+    ) {
+      return;
+    }
+    setPending(true);
+    setMergeError(null);
+    const result = await mergePlayers(player.id, target.id);
+    setPending(false);
+    if (result?.error) {
+      setMergeError(result.error);
+      return;
+    }
+    setMerging(false);
+  }
 
   async function handleArchive() {
     if (
@@ -124,6 +152,20 @@ export function PlayerRow({
         >
           ✎
         </button>
+        {otherPlayers.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setMergeError(null);
+              setMerging(true);
+            }}
+            disabled={pending}
+            aria-label={`Fusionner ${player.name} avec une autre fiche`}
+            className="rounded-lg p-1.5 text-base"
+          >
+            ⇄
+          </button>
+        )}
         <button
           type="button"
           onClick={handleArchive}
@@ -141,6 +183,52 @@ export function PlayerRow({
           onCancel={() => setPickingAvatar(false)}
           onSave={handleAvatarSave}
         />
+      )}
+      {merging && (
+        <div className="card flex flex-col gap-3">
+          <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
+            Fusionner {player.name} avec…
+          </h3>
+          <p className="font-quicksand text-xs text-[#777]">
+            Toutes les parties de {player.name} seront rattachées à la fiche choisie, qui
+            devient la fiche active. {player.name} sera ensuite archivé·e.
+          </p>
+          <select
+            value={mergeTarget}
+            onChange={(event) => setMergeTarget(event.target.value)}
+            className="input-field"
+          >
+            {otherPlayers.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.archived ? " (archivée)" : ""}
+              </option>
+            ))}
+          </select>
+          {mergeError && (
+            <p className="font-quicksand text-xs font-semibold text-onjoo-red-500">
+              {mergeError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleMerge}
+              disabled={pending}
+              className="btn-secondary flex-1"
+            >
+              Fusionner
+            </button>
+            <button
+              type="button"
+              onClick={() => setMerging(false)}
+              disabled={pending}
+              className="btn-ghost flex-1"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
       )}
     </>
   );

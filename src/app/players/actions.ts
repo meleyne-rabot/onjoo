@@ -62,3 +62,56 @@ export async function archivePlayer(playerId: string) {
 
   revalidatePath("/players");
 }
+
+// Fusionne deux fiches d'une même ligue en une seule (cas typique : un
+// doublon créé par erreur, ex. une fiche liée au compte + une fiche sans
+// compte pour la même personne). Ne touche jamais aux `rounds` : elles
+// référencent `match_players.id`, pas le joueur directement — seul
+// `match_players.player_id` doit être réassigné. La fiche source est
+// archivée (jamais supprimée), la cible ressort de l'archive si besoin
+// puisqu'elle devient la fiche survivante.
+export async function mergePlayers(sourcePlayerId: string, targetPlayerId: string) {
+  if (sourcePlayerId === targetPlayerId) return { error: "Impossible de fusionner une fiche avec elle-même." };
+
+  const supabase = await createClient();
+
+  const { data: rows } = await supabase
+    .from("players")
+    .select("id, league_id")
+    .in("id", [sourcePlayerId, targetPlayerId]);
+
+  if (!rows || rows.length !== 2 || rows[0].league_id !== rows[1].league_id) {
+    return { error: "Les deux fiches doivent appartenir à la même ligue." };
+  }
+
+  // Garde-fou : si les deux fiches ont déjà chacune une ligne dans la
+  // même partie (cas très improbable, mais la réassignation créerait
+  // sinon un doublon silencieux dans cette partie), on annule.
+  const { data: sourceMatches } = await supabase
+    .from("match_players")
+    .select("match_id")
+    .eq("player_id", sourcePlayerId);
+  const { data: targetMatches } = await supabase
+    .from("match_players")
+    .select("match_id")
+    .eq("player_id", targetPlayerId);
+  const targetMatchIds = new Set((targetMatches ?? []).map((m) => m.match_id));
+  const conflict = (sourceMatches ?? []).some((m) => targetMatchIds.has(m.match_id));
+  if (conflict) {
+    return {
+      error: "Les deux fiches ont déjà été ajoutées à une même partie — fusion annulée pour éviter un doublon.",
+    };
+  }
+
+  const { error: reassignError } = await supabase
+    .from("match_players")
+    .update({ player_id: targetPlayerId })
+    .eq("player_id", sourcePlayerId);
+  if (reassignError) return { error: reassignError.message };
+
+  await supabase.from("players").update({ archived: true }).eq("id", sourcePlayerId);
+  await supabase.from("players").update({ archived: false }).eq("id", targetPlayerId);
+
+  revalidatePath("/players");
+  return { error: null };
+}
