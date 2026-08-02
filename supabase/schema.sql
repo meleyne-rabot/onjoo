@@ -141,7 +141,7 @@ insert into games (code, name, active) values
   ('harmonie', 'Harmonie', false),
   ('six_qui_prend', '6 qui prend', false),
   ('molkky', 'Mölkky', true),
-  ('cornhole', 'Cornhole', false);
+  ('cornhole', 'Cornhole', true);
 
 -- ============================================================
 -- Trigger : le créateur d'une ligue en devient admin automatiquement
