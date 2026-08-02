@@ -48,6 +48,9 @@ export function PlayerRow({
   // otherPlayers (limité à la ligue active), donc recherche à la demande.
   const [crossLeagueQuery, setCrossLeagueQuery] = useState("");
   const [crossLeagueResults, setCrossLeagueResults] = useState<OtherPlayer[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const mergeCandidates = [
     ...otherPlayers,
@@ -55,8 +58,19 @@ export function PlayerRow({
   ];
 
   async function handleCrossLeagueSearch() {
-    const found = await searchExistingPlayers(crossLeagueQuery);
-    setCrossLeagueResults(found.map((f) => ({ id: f.id, name: `${f.name} (${f.league_name})`, archived: false })));
+    setSearching(true);
+    setSearchError(null);
+    try {
+      const found = await searchExistingPlayers(crossLeagueQuery);
+      setCrossLeagueResults(
+        found.map((f) => ({ id: f.id, name: `${f.name} (${f.league_name})`, archived: false })),
+      );
+      setSearched(true);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : "La recherche a échoué.");
+    } finally {
+      setSearching(false);
+    }
   }
 
   async function handleMerge() {
@@ -242,12 +256,22 @@ export function PlayerRow({
             <button
               type="button"
               onClick={handleCrossLeagueSearch}
-              disabled={crossLeagueQuery.trim().length < 2}
+              disabled={searching || crossLeagueQuery.trim().length < 2}
               className="btn-ghost"
             >
-              Chercher
+              {searching ? "..." : "Chercher"}
             </button>
           </div>
+          {searchError && (
+            <p className="font-quicksand text-xs font-semibold text-onjoo-red-500">
+              {searchError}
+            </p>
+          )}
+          {searched && !searching && crossLeagueResults.length === 0 && !searchError && (
+            <p className="font-quicksand text-xs text-[#777]">
+              Aucun joueur trouvé dans tes autres ligues pour « {crossLeagueQuery} ».
+            </p>
+          )}
           {(() => {
             const other = mergeCandidates.find((p) => p.id === mergeTarget);
             if (!other) return null;

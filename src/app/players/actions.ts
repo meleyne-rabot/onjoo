@@ -164,13 +164,18 @@ export async function searchExistingPlayers(query: string): Promise<ExistingPlay
     .eq("league_id", league.id);
   const alreadyHereIds = new Set((alreadyHere ?? []).map((row) => row.player_id));
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("league_players")
     .select("leagues(name), players!inner(id, name, avatar_color, avatar_shape)")
     .neq("league_id", league.id)
     .eq("archived", false)
     .ilike("players.name", `%${trimmed}%`)
     .limit(20);
+
+  if (error) {
+    console.error("searchExistingPlayers failed:", error.message);
+    throw new Error(error.message);
+  }
 
   const seen = new Set<string>();
   const results: ExistingPlayerResult[] = [];
