@@ -36,7 +36,13 @@ export function PlayerRow({
   const [editing, setEditing] = useState(false);
   const [pickingAvatar, setPickingAvatar] = useState(false);
   const [merging, setMerging] = useState(false);
-  const [mergeTarget, setMergeTarget] = useState(otherPlayers[0]?.id ?? "");
+  // Demandé dès l'ouverture plutôt que d'afficher liste locale + recherche
+  // en même temps (source de confusion : on ne sait plus où chercher).
+  const [mergeScope, setMergeScope] = useState<"same" | "other" | null>(null);
+  // Jamais présélectionné : fusionner avec la mauvaise personne par erreur
+  // (ex. cliquer "Fusionner" sans avoir remarqué qu'un premier candidat
+  // était déjà choisi) serait dangereux — un choix explicite est obligatoire.
+  const [mergeTarget, setMergeTarget] = useState("");
   // Laquelle des deux fiches garder active après fusion : la fiche cliquée
   // (celle-ci) n'a pas forcément l'historique le plus utile — ex. un compte
   // lié mais archivé vs. une fiche sans compte mais avec toutes les parties.
@@ -52,16 +58,14 @@ export function PlayerRow({
   const [searched, setSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  const mergeCandidates = [
-    ...otherPlayers,
-    ...crossLeagueResults.filter((r) => !otherPlayers.some((p) => p.id === r.id)),
-  ];
+  const mergeCandidates =
+    mergeScope === "same" ? otherPlayers : mergeScope === "other" ? crossLeagueResults : [];
 
-  async function handleCrossLeagueSearch() {
+  async function handleCrossLeagueSearch(query: string) {
     setSearching(true);
     setSearchError(null);
     try {
-      const found = await searchExistingPlayers(crossLeagueQuery);
+      const found = await searchExistingPlayers(query);
       setCrossLeagueResults(
         found.map((f) => ({ id: f.id, name: `${f.name} (${f.league_name})`, archived: false })),
       );
@@ -70,6 +74,17 @@ export function PlayerRow({
       setSearchError(err instanceof Error ? err.message : "La recherche a échoué.");
     } finally {
       setSearching(false);
+    }
+  }
+
+  function pickScope(scope: "same" | "other") {
+    setMergeScope(scope);
+    setMergeTarget("");
+    if (scope === "other") {
+      // Cherche tout de suite sur des pseudos approchants (le nom de la
+      // fiche elle-même) plutôt que de laisser un champ vide à remplir.
+      setCrossLeagueQuery(player.name);
+      handleCrossLeagueSearch(player.name);
     }
   }
 
@@ -197,6 +212,11 @@ export function PlayerRow({
           onClick={() => {
             setMergeError(null);
             setKeepSelf(false);
+            setMergeScope(null);
+            setMergeTarget("");
+            setCrossLeagueResults([]);
+            setCrossLeagueQuery("");
+            setSearched(false);
             setMerging(true);
           }}
           disabled={pending}
@@ -228,6 +248,70 @@ export function PlayerRow({
           <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
             Fusionner {player.name} avec…
           </h3>
+
+          <p className="font-quicksand text-xs font-semibold text-onjoo-green-900">
+            Le doublon est où ?
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => pickScope("same")}
+              className={`flex-1 rounded-lg border-2 px-3 py-2 font-quicksand text-sm font-bold ${
+                mergeScope === "same"
+                  ? "border-onjoo-green-900 text-onjoo-green-900"
+                  : "border-[#ddd] text-[#999]"
+              }`}
+            >
+              Dans cette ligue
+            </button>
+            <button
+              type="button"
+              onClick={() => pickScope("other")}
+              className={`flex-1 rounded-lg border-2 px-3 py-2 font-quicksand text-sm font-bold ${
+                mergeScope === "other"
+                  ? "border-onjoo-green-900 text-onjoo-green-900"
+                  : "border-[#ddd] text-[#999]"
+              }`}
+            >
+              Dans une autre ligue
+            </button>
+          </div>
+
+          {mergeScope === "same" && otherPlayers.length === 0 && (
+            <p className="font-quicksand text-xs text-[#777]">
+              Aucun autre joueur dans cette ligue.
+            </p>
+          )}
+
+          {mergeScope === "other" && (
+            <div className="flex gap-2">
+              <input
+                value={crossLeagueQuery}
+                onChange={(event) => setCrossLeagueQuery(event.target.value)}
+                placeholder="Nom du joueur…"
+                className="input-field flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => handleCrossLeagueSearch(crossLeagueQuery)}
+                disabled={searching || crossLeagueQuery.trim().length < 2}
+                className="btn-ghost"
+              >
+                {searching ? "..." : "Chercher"}
+              </button>
+            </div>
+          )}
+          {searchError && (
+            <p className="font-quicksand text-xs font-semibold text-onjoo-red-500">
+              {searchError}
+            </p>
+          )}
+          {mergeScope === "other" && searched && !searching && crossLeagueResults.length === 0 && !searchError && (
+            <p className="font-quicksand text-xs text-[#777]">
+              Aucun joueur trouvé dans tes autres ligues pour « {crossLeagueQuery} ».
+            </p>
+          )}
+
           {mergeCandidates.length > 0 && (
             <select
               value={mergeTarget}
@@ -243,35 +327,7 @@ export function PlayerRow({
               ))}
             </select>
           )}
-          <p className="font-quicksand text-xs text-[#777]">
-            Le doublon est dans une autre ligue ? Cherche-le :
-          </p>
-          <div className="flex gap-2">
-            <input
-              value={crossLeagueQuery}
-              onChange={(event) => setCrossLeagueQuery(event.target.value)}
-              placeholder="Nom du joueur…"
-              className="input-field flex-1"
-            />
-            <button
-              type="button"
-              onClick={handleCrossLeagueSearch}
-              disabled={searching || crossLeagueQuery.trim().length < 2}
-              className="btn-ghost"
-            >
-              {searching ? "..." : "Chercher"}
-            </button>
-          </div>
-          {searchError && (
-            <p className="font-quicksand text-xs font-semibold text-onjoo-red-500">
-              {searchError}
-            </p>
-          )}
-          {searched && !searching && crossLeagueResults.length === 0 && !searchError && (
-            <p className="font-quicksand text-xs text-[#777]">
-              Aucun joueur trouvé dans tes autres ligues pour « {crossLeagueQuery} ».
-            </p>
-          )}
+
           {(() => {
             const other = mergeCandidates.find((p) => p.id === mergeTarget);
             if (!other) return null;
