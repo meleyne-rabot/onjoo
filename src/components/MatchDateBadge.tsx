@@ -7,7 +7,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function MatchDateBadge({ matchId, playedAt }: { matchId: string; playedAt: string }) {
+export function MatchDateBadge({ matchId, playedAt }: { matchId: string; playedAt: string | null }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -15,7 +15,7 @@ export function MatchDateBadge({ matchId, playedAt }: { matchId: string; playedA
     return (
       <input
         type="date"
-        defaultValue={playedAt.slice(0, 10)}
+        defaultValue={playedAt ? playedAt.slice(0, 10) : ""}
         autoFocus
         disabled={isPending}
         onClick={(event) => {
@@ -45,7 +45,7 @@ export function MatchDateBadge({ matchId, playedAt }: { matchId: string; playedA
       }}
       className="font-quicksand text-xs text-[#777] underline decoration-dotted underline-offset-2"
     >
-      {formatDate(playedAt)}
+      {playedAt ? formatDate(playedAt) : "Date inconnue"}
     </button>
   );
 }

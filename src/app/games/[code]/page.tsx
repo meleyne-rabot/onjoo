@@ -128,12 +128,8 @@ export default async function GameHistoryPage({
                       · {qwirkleCount} Qwirkle{qwirkleCount > 1 ? "s" : ""}
                     </span>
                   )}
-                  {match.played_at && (
-                    <>
-                      <span className="font-quicksand text-xs text-[#ccc]">·</span>
-                      <MatchDateBadge matchId={match.id} playedAt={match.played_at} />
-                    </>
-                  )}
+                  <span className="font-quicksand text-xs text-[#ccc]">·</span>
+                  <MatchDateBadge matchId={match.id} playedAt={match.played_at} />
                 </div>
               )}
             </Link>
