@@ -114,18 +114,49 @@ function CategoryMark({ category, s }: { category: GameCategory; s: number }) {
         </div>
       );
     case "exterieur":
-      // Placeholder en attendant les vraies icônes "Extérieur" — une
-      // feuille toute simple, cohérente avec le style aplat des autres.
+      // Boule de pétanque pleine + quille en transparence (option Y du
+      // handoff design, OnjooUIKit.html section "Icône catégorie Extérieur").
       return (
-        <div
-          style={{
-            width: 22 * s,
-            height: 22 * s,
-            background: "#5C3A73",
-            borderRadius: "0% 50% 50% 50%",
-            transform: "rotate(45deg)",
-          }}
-        />
+        <div style={{ position: "relative", width: 30 * s, height: 30 * s }}>
+          <svg
+            width={18 * s}
+            height={28 * s}
+            viewBox="0 0 22 34"
+            style={{ position: "absolute", bottom: 0, right: 0 }}
+          >
+            <path
+              d="M11 1 C13 1 13.7 3 13.4 5 C13.1 6.6 12.2 7 12.2 8.6 C12.2 10.2 14.3 11 15.5 13.5 C17 16.7 17.2 20.4 16.6 24.1 C16.3 26.5 15.4 28.3 13.7 28.6 L8.3 28.6 C6.6 28.3 5.7 26.5 5.4 24.1 C4.8 20.4 5 16.7 6.5 13.5 C7.7 11 9.8 10.2 9.8 8.6 C9.8 7 8.9 6.6 8.6 5 C8.3 3 9 1 11 1 Z"
+              fill="none"
+              stroke="#5C3A73"
+              strokeWidth={1.6 * s}
+            />
+            <line x1="4.6" y1="17" x2="17.4" y2="17" stroke="#5C3A73" strokeWidth={1.4 * s} />
+          </svg>
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              width: 21 * s,
+              height: 21 * s,
+              background: "#5C3A73",
+              borderRadius: "50%",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 4 * s,
+                left: 4.5 * s,
+                width: 7 * s,
+                height: 5 * s,
+                background: "#fff",
+                borderRadius: "50%",
+                opacity: 0.35,
+              }}
+            />
+          </div>
+        </div>
       );
   }
 }
