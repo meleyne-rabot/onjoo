@@ -115,3 +115,59 @@ export async function mergePlayers(sourcePlayerId: string, targetPlayerId: strin
   revalidatePath("/players");
   return { error: null };
 }
+
+export type ExistingPlayerResult = {
+  id: string;
+  name: string;
+  avatar_color: string;
+  avatar_shape: string;
+  league_name: string;
+};
+
+type LeagueJoin = { name: string };
+
+// Recherche par nom parmi les fiches des AUTRES ligues où on est déjà
+// membre (jamais un annuaire global) — la policy players_select fait déjà
+// ce filtrage, on exclut juste la ligue active du résultat.
+export async function searchExistingPlayers(query: string): Promise<ExistingPlayerResult[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  const league = await getActiveLeague();
+  if (!league) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("players")
+    .select("id, name, avatar_color, avatar_shape, leagues(name)")
+    .ilike("name", `%${trimmed}%`)
+    .neq("league_id", league.id)
+    .eq("archived", false)
+    .limit(10);
+
+  return (data ?? []).map((p) => {
+    const leagueJoin = (Array.isArray(p.leagues) ? p.leagues[0] : p.leagues) as LeagueJoin | null;
+    return {
+      id: p.id,
+      name: p.name,
+      avatar_color: p.avatar_color,
+      avatar_shape: p.avatar_shape,
+      league_name: leagueJoin?.name ?? "",
+    };
+  });
+}
+
+export async function addExistingPlayerToLeague(sourcePlayerId: string) {
+  const league = await getActiveLeague();
+  if (!league) return { error: "Aucune ligue active." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_existing_player_to_league", {
+    p_target_league_id: league.id,
+    p_source_player_id: sourcePlayerId,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/players");
+  return { error: null };
+}

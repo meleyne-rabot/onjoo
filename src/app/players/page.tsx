@@ -4,6 +4,7 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { InviteLink } from "@/components/InviteLink";
 import { PlayerRow } from "@/components/PlayerRow";
+import { AddExistingPlayer } from "@/components/AddExistingPlayer";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addPlayer } from "./actions";
 
@@ -82,6 +83,8 @@ export default async function PlayersPage() {
           Ajouter
         </SubmitButton>
       </form>
+
+      <AddExistingPlayer />
 
       <section className="flex flex-col gap-2">
         <h2 className="font-fredoka text-base font-semibold text-onjoo-green-900">
