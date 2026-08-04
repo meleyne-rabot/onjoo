@@ -76,9 +76,17 @@ export default async function GameHistoryPage({
             </h1>
           </div>
         </div>
-        <Link href={`/games/${code}/new`} className="btn-primary shrink-0">
-          Nouvelle partie
-        </Link>
+        <div className="flex shrink-0 flex-col gap-2">
+          <Link href={`/games/${code}/new`} className="btn-primary">
+            Nouvelle partie
+          </Link>
+          <Link
+            href={`/games/${code}/stats`}
+            className="text-center font-quicksand text-sm font-semibold text-onjoo-green-900 underline"
+          >
+            📊 Stats
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">
