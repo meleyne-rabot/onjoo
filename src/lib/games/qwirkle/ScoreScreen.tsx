@@ -19,16 +19,25 @@ import {
   type Round,
   type RoundDetail,
 } from "./calc";
+import { computeMatchRanking, type MatchRanking } from "./stats";
 
 type Participant = {
   id: string; // match_players.id
+  playerId?: string | null; // players.id global — absent pour un joueur ponctuel
   name: string;
   avatarColor: string;
   avatarShape: string;
 };
 
+function rankLabel(rank: number, total: number): string {
+  if (rank === 1) return `record perso ! (1ère sur ${total})`;
+  if (rank <= 10) return `Top ${rank} sur ${total}`;
+  return `${rank}e sur ${total}`;
+}
+
 export function QwirkleScoreScreen({
   matchId,
+  leagueId,
   gameCode,
   participants,
   initialRounds,
@@ -55,6 +64,10 @@ export function QwirkleScoreScreen({
   const [finisherId, setFinisherId] = useState<string | null>(initialFinisherId);
   const [turnOrderIds, setTurnOrderIds] = useState<string[] | null>(null);
   const [turnOrderSet, setTurnOrderSet] = useState(initialTurnOrderSet);
+  // Classement de CETTE partie parmi tout l'historique Qwirkle de la ligue —
+  // calculé une seule fois, juste après avoir marqué la partie comme
+  // terminée, pour l'afficher dans le popup de victoire.
+  const [ranking, setRanking] = useState<MatchRanking | null>(null);
   const [isPending, startTransition] = useTransition();
   // Le conteneur qui défile horizontalement devient malgré lui aussi la
   // référence de défilement vertical (effet de bord CSS), ce qui casse
@@ -135,6 +148,25 @@ export function QwirkleScoreScreen({
     totalQwirkles > 0 ? Math.round((winnerQwirkles / totalQwirkles) * 100) : 0;
   const winnerPoints = winners.length > 0 ? displayTotals[winners[0]] ?? 0 : 0;
 
+  // Si on rouvre une partie déjà terminée (ex. depuis l'historique), on
+  // calcule aussi son classement — pas seulement juste après l'avoir
+  // terminée. Volontairement une seule fois au montage : le classement
+  // n'a pas besoin d'être recalculé à chaque re-render.
+  useEffect(() => {
+    if (initialStatus !== "completed") return;
+    computeMatchRanking(
+      supabase,
+      leagueId,
+      matchId,
+      orderedParticipants.map((p) => ({
+        matchPlayerId: p.id,
+        playerId: p.playerId ?? null,
+        score: displayTotals[p.id] ?? 0,
+      })),
+    ).then(setRanking);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function pickStarter(starterId: string) {
     const baseOrder = orderedParticipants.map((p) => p.id);
     const startIndex = baseOrder.indexOf(starterId);
@@ -198,6 +230,18 @@ export function QwirkleScoreScreen({
         .eq("id", matchId);
 
       setStatus("completed");
+
+      const rankingResult = await computeMatchRanking(
+        supabase,
+        leagueId,
+        matchId,
+        orderedParticipants.map((participant) => ({
+          matchPlayerId: participant.id,
+          playerId: participant.playerId ?? null,
+          score: displayTotals[participant.id] ?? 0,
+        })),
+      );
+      setRanking(rankingResult);
     });
   }
 
@@ -238,6 +282,29 @@ export function QwirkleScoreScreen({
               <span className="badge">{winnerQwirklePct}% des Qwirkles de la partie</span>
             )}
           </div>
+          {ranking && (
+            <div className="flex flex-col items-center gap-1 border-t border-[#eee] pt-3">
+              <span className="font-quicksand text-sm font-semibold text-onjoo-green-900">
+                {matchTotal} pts au total — {rankLabel(ranking.totalPointsRank, ranking.totalMatches)}
+              </span>
+              {totalQwirkles > 0 && (
+                <span className="font-quicksand text-sm font-semibold text-onjoo-green-900">
+                  {totalQwirkles} Qwirkle{totalQwirkles > 1 ? "s" : ""} — {rankLabel(ranking.totalQwirklesRank, ranking.totalMatches)}
+                </span>
+              )}
+              <div className="mt-1 flex flex-col items-center gap-0.5">
+                {orderedParticipants.map((p) => {
+                  const personal = ranking.personalBestRanks[p.id];
+                  if (!personal) return null;
+                  return (
+                    <span key={p.id} className="font-quicksand text-xs text-[#777]">
+                      {p.name} : {rankLabel(personal.rank, personal.totalGames)} de ses scores
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <button
             onClick={() => router.push(`/games/${gameCode}`)}
             className="btn-primary mt-2"

@@ -13,6 +13,7 @@ type PlayerJoin = {
 
 type MatchPlayerRow = {
   id: string;
+  player_id: string | null;
   guest_name: string | null;
   finished_board: boolean;
   turn_order: number | null;
@@ -55,7 +56,7 @@ export default async function MatchPage({
     supabase
       .from("match_players")
       .select(
-        "id, guest_name, finished_board, turn_order, created_at, players(name, avatar_color, avatar_shape)",
+        "id, player_id, guest_name, finished_board, turn_order, created_at, players(name, avatar_color, avatar_shape)",
       )
       .eq("match_id", id)
       .order("turn_order", { ascending: true, nullsFirst: false })
@@ -86,6 +87,7 @@ export default async function MatchPage({
     if (player) {
       return {
         id: mp.id,
+        playerId: mp.player_id,
         name: player.name,
         avatarColor: player.avatar_color,
         avatarShape: player.avatar_shape,
@@ -93,6 +95,7 @@ export default async function MatchPage({
     }
     return {
       id: mp.id,
+      playerId: null,
       name: mp.guest_name ?? "Invité",
       avatarColor: GUEST_PLACEHOLDER_AVATAR.color,
       avatarShape: GUEST_PLACEHOLDER_AVATAR.shape,
