@@ -34,6 +34,80 @@ function countQwirkles(rounds: RoundRow[]): number {
   }).length;
 }
 
+function HeadToHeadDonut({
+  playerA,
+  playerB,
+  totalGames,
+}: {
+  playerA: { name: string; avatarColor: string; avatarShape: string; wins: number };
+  playerB: { name: string; avatarColor: string; avatarShape: string; wins: number };
+  totalGames: number;
+}) {
+  const size = 120;
+  const strokeWidth = 14;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  const lenA = totalGames > 0 ? (playerA.wins / totalGames) * circumference : 0;
+  const lenB = circumference - lenA;
+  const pctA = totalGames > 0 ? Math.round((playerA.wins / totalGames) * 100) : 0;
+
+  return (
+    <div className="card flex flex-col items-center gap-3 py-4">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eee" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={playerA.avatarColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${lenA} ${circumference - lenA}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={playerB.avatarColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${lenB} ${circumference - lenB}`}
+          strokeDashoffset={-lenA}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+        <text
+          x={size / 2}
+          y={size / 2 - 2}
+          textAnchor="middle"
+          fontFamily="Fredoka"
+          fontSize="22"
+          fontWeight="700"
+          fill="#163D2E"
+        >
+          {pctA}%
+        </text>
+        <text x={size / 2} y={size / 2 + 16} textAnchor="middle" fontFamily="Quicksand" fontSize="11" fill="#777">
+          {playerA.wins}-{playerB.wins}
+        </text>
+      </svg>
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col items-center gap-1">
+          <AvatarBadge color={playerA.avatarColor} shape={playerA.avatarShape} size={28} />
+          <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">{playerA.name}</span>
+        </div>
+        <span className="font-quicksand text-xs text-[#999]">vs</span>
+        <div className="flex flex-col items-center gap-1">
+          <AvatarBadge color={playerB.avatarColor} shape={playerB.avatarShape} size={28} />
+          <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">{playerB.name}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function GameStatsPage({
   params,
 }: {
@@ -70,9 +144,9 @@ export default async function GameStatsPage({
     };
   });
 
-  const topByTotal = [...matchSummaries].sort((a, b) => b.total - a.total).slice(0, 10);
+  const topByTotal = [...matchSummaries].sort((a, b) => b.total - a.total).slice(0, 5);
   const topByQwirkles =
-    code === "qwirkle" ? [...matchSummaries].sort((a, b) => b.qwirkles - a.qwirkles).slice(0, 10) : [];
+    code === "qwirkle" ? [...matchSummaries].sort((a, b) => b.qwirkles - a.qwirkles).slice(0, 5) : [];
 
   type LeaderRow = {
     playerId: string;
@@ -106,6 +180,48 @@ export default async function GameStatsPage({
     }
   }
   const leaderboard = [...leaderMap.values()].sort((a, b) => b.wins - a.wins || b.played - a.played);
+
+  type HeadToHead = {
+    key: string;
+    playerA: { playerId: string; name: string; avatarColor: string; avatarShape: string; wins: number };
+    playerB: { playerId: string; name: string; avatarColor: string; avatarShape: string; wins: number };
+    totalGames: number;
+  };
+  const h2hMap = new Map<string, HeadToHead>();
+  for (const m of rows) {
+    // Face-à-face = exactement 2 identités connues dans la partie (pas de
+    // sens à désigner "qui a battu qui" à 3+ joueurs simultanés).
+    const players = (m.match_players ?? []).filter((mp) => mp.player_id && playerOf(mp));
+    if (players.length !== 2) continue;
+    const [p1, p2] = players;
+    const [first, second] = p1.player_id! < p2.player_id! ? [p1, p2] : [p2, p1];
+    const firstPlayer = playerOf(first)!;
+    const secondPlayer = playerOf(second)!;
+    const key = `${first.player_id}-${second.player_id}`;
+    const existing = h2hMap.get(key) ?? {
+      key,
+      playerA: {
+        playerId: first.player_id!,
+        name: firstPlayer.name,
+        avatarColor: firstPlayer.avatar_color,
+        avatarShape: firstPlayer.avatar_shape,
+        wins: 0,
+      },
+      playerB: {
+        playerId: second.player_id!,
+        name: secondPlayer.name,
+        avatarColor: secondPlayer.avatar_color,
+        avatarShape: secondPlayer.avatar_shape,
+        wins: 0,
+      },
+      totalGames: 0,
+    };
+    existing.totalGames += 1;
+    if (first.is_winner) existing.playerA.wins += 1;
+    if (second.is_winner) existing.playerB.wins += 1;
+    h2hMap.set(key, existing);
+  }
+  const headToHeads = [...h2hMap.values()].sort((a, b) => b.totalGames - a.totalGames);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-8 px-6 py-10">
@@ -145,6 +261,22 @@ export default async function GameStatsPage({
                 </div>
                 <span className="badge">{p.wins} 🏆</span>
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {headToHeads.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Face à face</h2>
+          <div className="flex flex-wrap justify-center gap-3">
+            {headToHeads.map((h2h) => (
+              <HeadToHeadDonut
+                key={h2h.key}
+                playerA={h2h.playerA}
+                playerB={h2h.playerB}
+                totalGames={h2h.totalGames}
+              />
             ))}
           </div>
         </section>
