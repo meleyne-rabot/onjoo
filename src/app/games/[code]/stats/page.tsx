@@ -34,75 +34,136 @@ function countQwirkles(rounds: RoundRow[]): number {
   }).length;
 }
 
+type DonutPlayer = { name: string; avatarColor: string; avatarShape: string; wins: number };
+
+// Position d'une étiquette au milieu d'un arc, sur l'anneau (le cercle
+// démarre à midi, -90° dans le repère SVG standard où 0° pointe à droite).
+function arcMidpoint(cx: number, cy: number, radius: number, startFraction: number, sweepFraction: number) {
+  const midAngleDeg = (startFraction + sweepFraction / 2) * 360 - 90;
+  const rad = (midAngleDeg * Math.PI) / 180;
+  return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
+}
+
 function HeadToHeadDonut({
   playerA,
   playerB,
   totalGames,
 }: {
-  playerA: { name: string; avatarColor: string; avatarShape: string; wins: number };
-  playerB: { name: string; avatarColor: string; avatarShape: string; wins: number };
+  playerA: DonutPlayer;
+  playerB: DonutPlayer;
   totalGames: number;
 }) {
-  const size = 120;
-  const strokeWidth = 14;
-  const r = (size - strokeWidth) / 2;
+  const size = 280;
+  const cx = size / 2;
+  const strokeWidth = 20;
+  const r = 85;
   const circumference = 2 * Math.PI * r;
-  const lenA = totalGames > 0 ? (playerA.wins / totalGames) * circumference : 0;
+  const fracA = totalGames > 0 ? playerA.wins / totalGames : 0;
+  const fracB = 1 - fracA;
+  const lenA = fracA * circumference;
   const lenB = circumference - lenA;
-  const pctA = totalGames > 0 ? Math.round((playerA.wins / totalGames) * 100) : 0;
+  const pctA = Math.round(fracA * 100);
+  const pctB = 100 - pctA;
+  const labelRadius = r + strokeWidth / 2 + 18;
+  const chipRadius = 18;
+  const posA = arcMidpoint(cx, cx, labelRadius, 0, fracA);
+  const posB = arcMidpoint(cx, cx, labelRadius, fracA, fracB);
 
   return (
-    <div className="card flex flex-col items-center gap-3 py-4">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eee" strokeWidth={strokeWidth} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={playerA.avatarColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${lenA} ${circumference - lenA}`}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={playerB.avatarColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${lenB} ${circumference - lenB}`}
-          strokeDashoffset={-lenA}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-        <text
-          x={size / 2}
-          y={size / 2 - 2}
-          textAnchor="middle"
-          fontFamily="Fredoka"
-          fontSize="22"
-          fontWeight="700"
-          fill="#163D2E"
-        >
-          {pctA}%
-        </text>
-        <text x={size / 2} y={size / 2 + 16} textAnchor="middle" fontFamily="Quicksand" fontSize="11" fill="#777">
-          {playerA.wins}-{playerB.wins}
-        </text>
-      </svg>
-      <div className="flex items-center gap-4">
-        <div className="flex flex-col items-center gap-1">
-          <AvatarBadge color={playerA.avatarColor} shape={playerA.avatarShape} size={28} />
-          <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">{playerA.name}</span>
-        </div>
-        <span className="font-quicksand text-xs text-[#999]">vs</span>
-        <div className="flex flex-col items-center gap-1">
-          <AvatarBadge color={playerB.avatarColor} shape={playerB.avatarShape} size={28} />
-          <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">{playerB.name}</span>
-        </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="#eee" strokeWidth={strokeWidth} />
+      <circle
+        cx={cx}
+        cy={cx}
+        r={r}
+        fill="none"
+        stroke={playerA.avatarColor}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${lenA} ${circumference - lenA}`}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cx})`}
+      />
+      <circle
+        cx={cx}
+        cy={cx}
+        r={r}
+        fill="none"
+        stroke={playerB.avatarColor}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${lenB} ${circumference - lenB}`}
+        strokeDashoffset={-lenA}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cx})`}
+      />
+      <text x={cx} y={cx + 5} textAnchor="middle" fontFamily="Quicksand" fontSize="14" fill="#777">
+        {playerA.wins}-{playerB.wins}
+      </text>
+      {totalGames > 0 && (
+        <>
+          <circle cx={posA.x} cy={posA.y} r={chipRadius} fill={playerA.avatarColor} />
+          <text
+            x={posA.x}
+            y={posA.y + 5}
+            textAnchor="middle"
+            fontFamily="Fredoka"
+            fontSize="14"
+            fontWeight="700"
+            fill="#fff"
+          >
+            {pctA}%
+          </text>
+          <circle cx={posB.x} cy={posB.y} r={chipRadius} fill={playerB.avatarColor} />
+          <text
+            x={posB.x}
+            y={posB.y + 5}
+            textAnchor="middle"
+            fontFamily="Fredoka"
+            fontSize="14"
+            fontWeight="700"
+            fill="#fff"
+          >
+            {pctB}%
+          </text>
+        </>
+      )}
+    </svg>
+  );
+}
+
+// Vue fusionnée classement + face-à-face, pour une ligue à exactement 2
+// joueurs (ex. MouneJF) : le donut EST le classement, pas une répétition
+// de la liste juste au-dessus.
+function TwoPlayerLeaderboard({
+  playerA,
+  playerB,
+  h2hWinsA,
+  h2hWinsB,
+}: {
+  playerA: { playerId: string; name: string; avatarColor: string; avatarShape: string; played: number; totalScore: number };
+  playerB: { playerId: string; name: string; avatarColor: string; avatarShape: string; played: number; totalScore: number };
+  h2hWinsA: number;
+  h2hWinsB: number;
+}) {
+  return (
+    <div className="card flex flex-col items-center gap-4 py-6">
+      <HeadToHeadDonut
+        playerA={{ ...playerA, wins: h2hWinsA }}
+        playerB={{ ...playerB, wins: h2hWinsB }}
+        totalGames={h2hWinsA + h2hWinsB}
+      />
+      <div className="grid w-full grid-cols-2 gap-3">
+        {[playerA, playerB].map((p) => (
+          <div key={p.playerId} className="flex flex-col items-center gap-1 text-center">
+            <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={40} />
+            <span className="font-quicksand text-sm font-semibold text-onjoo-green-900">{p.name}</span>
+            <span className="font-quicksand text-xs text-[#777]">
+              {p.played} partie{p.played > 1 ? "s" : ""}
+            </span>
+            <span className="font-quicksand text-xs text-[#777]">
+              {Math.round(p.totalScore / p.played)} pts en moyenne
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -223,6 +284,11 @@ export default async function GameStatsPage({
   }
   const headToHeads = [...h2hMap.values()].sort((a, b) => b.totalGames - a.totalGames);
 
+  // À exactement 2 joueurs, le donut EST le classement — pas de sens à
+  // répéter la même info dans une liste au-dessus. Au-delà, un donut ne
+  // peut pas représenter un classement à plusieurs, on garde la liste.
+  const isTwoPlayerLeague = leaderboard.length === 2 && headToHeads.length === 1;
+
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-8 px-6 py-10">
       <div className="flex items-center gap-3">
@@ -239,47 +305,77 @@ export default async function GameStatsPage({
         <p className="font-quicksand text-neutral-500">Pas encore de partie terminée.</p>
       )}
 
-      {leaderboard.length > 0 && (
+      {isTwoPlayerLeague ? (
         <section className="flex flex-col gap-3">
           <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Classement</h2>
-          <div className="flex flex-col gap-2">
-            {leaderboard.map((p, i) => (
-              <div key={p.playerId} className="card flex items-center gap-3 py-3">
-                <span className="w-6 text-center font-fredoka text-base font-bold text-[#999]">
-                  {i + 1}
-                </span>
-                <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={36} />
-                <div className="flex flex-1 flex-col">
-                  <span className="font-quicksand text-base font-medium text-onjoo-green-900">
-                    {p.name}
-                  </span>
-                  <span className="font-quicksand text-xs text-[#777]">
-                    {p.played} partie{p.played > 1 ? "s" : ""} ·{" "}
-                    {Math.round((p.wins / p.played) * 100)}% de victoires ·{" "}
-                    {Math.round(p.totalScore / p.played)} pts en moyenne
-                  </span>
-                </div>
-                <span className="badge">{p.wins} 🏆</span>
+          <TwoPlayerLeaderboard
+            playerA={leaderboard[0]}
+            playerB={leaderboard[1]}
+            h2hWinsA={headToHeads[0].playerA.wins}
+            h2hWinsB={headToHeads[0].playerB.wins}
+          />
+        </section>
+      ) : (
+        <>
+          {leaderboard.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Classement</h2>
+              <div className="flex flex-col gap-2">
+                {leaderboard.map((p, i) => (
+                  <div key={p.playerId} className="card flex items-center gap-3 py-3">
+                    <span className="w-6 text-center font-fredoka text-base font-bold text-[#999]">
+                      {i + 1}
+                    </span>
+                    <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={36} />
+                    <div className="flex flex-1 flex-col">
+                      <span className="font-quicksand text-base font-medium text-onjoo-green-900">
+                        {p.name}
+                      </span>
+                      <span className="font-quicksand text-xs text-[#777]">
+                        {p.played} partie{p.played > 1 ? "s" : ""} ·{" "}
+                        {Math.round((p.wins / p.played) * 100)}% de victoires ·{" "}
+                        {Math.round(p.totalScore / p.played)} pts en moyenne
+                      </span>
+                    </div>
+                    <span className="badge">{p.wins} 🏆</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            </section>
+          )}
 
-      {headToHeads.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Face à face</h2>
-          <div className="flex flex-wrap justify-center gap-3">
-            {headToHeads.map((h2h) => (
-              <HeadToHeadDonut
-                key={h2h.key}
-                playerA={h2h.playerA}
-                playerB={h2h.playerB}
-                totalGames={h2h.totalGames}
-              />
-            ))}
-          </div>
-        </section>
+          {headToHeads.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Face à face</h2>
+              <div className="flex flex-wrap justify-center gap-3">
+                {headToHeads.map((h2h) => (
+                  <div key={h2h.key} className="card flex flex-col items-center gap-3 py-4">
+                    <HeadToHeadDonut
+                      playerA={h2h.playerA}
+                      playerB={h2h.playerB}
+                      totalGames={h2h.totalGames}
+                    />
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col items-center gap-1">
+                        <AvatarBadge color={h2h.playerA.avatarColor} shape={h2h.playerA.avatarShape} size={28} />
+                        <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">
+                          {h2h.playerA.name}
+                        </span>
+                      </div>
+                      <span className="font-quicksand text-xs text-[#999]">vs</span>
+                      <div className="flex flex-col items-center gap-1">
+                        <AvatarBadge color={h2h.playerB.avatarColor} shape={h2h.playerB.avatarShape} size={28} />
+                        <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">
+                          {h2h.playerB.name}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       {topByTotal.length > 0 && (
