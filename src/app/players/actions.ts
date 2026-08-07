@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
@@ -19,45 +20,27 @@ export async function addPlayer(_prevState: { error: string | null }, formData: 
   if (!league) return { error: "Aucune ligue active." };
 
   const supabase = await createClient();
-
-  // Diagnostic temporaire (incident RLS players_insert, 2026-08) : la
-  // policy vérifiée en base est correcte mais l'insert échoue quand même
-  // en prod — on vérifie ici, dans le MÊME contexte serveur que l'insert
-  // qui suit, si auth.uid() se résout bien côté serveur.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: "Diagnostic : session non reconnue côté serveur (auth.getUser() renvoie null)." };
-  }
-
-  // Étape 2 du diagnostic : ce que POSTGRES voit comme auth.uid() pour la
-  // requête PostgREST elle-même, indépendamment de ce que le SDK JS a pu
-  // résoudre localement via getUser() — les deux peuvent diverger si
-  // l'en-tête Authorization envoyé à PostgREST ne correspond pas à la
-  // session lue côté SDK.
-  const { data: dbUid, error: dbUidError } = await supabase.rpc("debug_auth_uid");
-
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
-  const { data: created, error: insertError } = await supabase
-    .from("players")
-    .insert({ name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: true })
-    .select("id")
-    .single();
+  // id généré côté client plutôt que RETURNING de l'insert : players_select
+  // exige un rattachement league_players, qui n'existe pas encore pour
+  // cette toute nouvelle fiche — un `INSERT ... RETURNING` est alors
+  // rejeté par la policy RLS de SELECT, avec la même erreur qu'un vrai
+  // refus d'insert ("new row violates row-level security policy" — c'est
+  // l'incident qui bloquait tout ajout de joueur en prod).
+  const playerId = randomUUID();
 
-  if (insertError || !created) {
-    const details = [insertError?.code, insertError?.details, insertError?.hint]
-      .filter(Boolean)
-      .join(" | ");
-    return {
-      error: `Diagnostic : uid(JS)=${user.id} uid(DB)=${dbUid ?? `null/erreur:${dbUidError?.message}`} — ${insertError?.message ?? "Échec de la création du profil."}${details ? ` (${details})` : ""}`,
-    };
+  const { error: insertError } = await supabase
+    .from("players")
+    .insert({ id: playerId, name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: true });
+
+  if (insertError) {
+    return { error: insertError.message };
   }
 
   const { error: attachError } = await supabase
     .from("league_players")
-    .insert({ league_id: league.id, player_id: created.id });
+    .insert({ league_id: league.id, player_id: playerId });
 
   if (attachError) {
     return { error: attachError.message };

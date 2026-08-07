@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -18,14 +19,19 @@ export async function addGuestPlayer(formData: FormData) {
   const supabase = await createClient();
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
-  const { data: created } = await supabase
-    .from("players")
-    .insert({ name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: true })
-    .select("id")
-    .single();
+  // id généré côté client plutôt que RETURNING de l'insert : players_select
+  // exige un rattachement league_players, qui n'existe pas encore pour
+  // cette toute nouvelle fiche — un `INSERT ... RETURNING` est alors
+  // rejeté par la policy RLS de SELECT, avec la même erreur qu'un vrai
+  // refus d'insert ("new row violates row-level security policy").
+  const playerId = randomUUID();
 
-  if (created) {
-    await supabase.from("league_players").insert({ league_id: league.id, player_id: created.id });
+  const { error: insertError } = await supabase
+    .from("players")
+    .insert({ id: playerId, name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: true });
+
+  if (!insertError) {
+    await supabase.from("league_players").insert({ league_id: league.id, player_id: playerId });
   }
 
   revalidatePath(`/games/${gameCode}/new`);

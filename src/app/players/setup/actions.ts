@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
@@ -39,23 +40,28 @@ export async function createMyPlayer(
 
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
-  const { data: created, error: insertError } = await supabase
-    .from("players")
-    .insert({
-      name,
-      avatar_color: avatar.color,
-      avatar_shape: avatar.shape,
-      is_guest: false,
-      linked_user_id: user.id,
-    })
-    .select("id")
-    .single();
+  // id généré côté client plutôt que RETURNING de l'insert : players_select
+  // exige un rattachement league_players, qui n'existe pas encore pour
+  // cette toute nouvelle fiche — un `INSERT ... RETURNING` est alors
+  // rejeté par la policy RLS de SELECT, avec la même erreur qu'un vrai
+  // refus d'insert ("new row violates row-level security policy" — c'est
+  // l'incident qui faisait boucler /players/setup indéfiniment).
+  const playerId = randomUUID();
 
-  if (insertError || !created) {
-    return { error: insertError?.message ?? "Échec de la création du profil." };
+  const { error: insertError } = await supabase.from("players").insert({
+    id: playerId,
+    name,
+    avatar_color: avatar.color,
+    avatar_shape: avatar.shape,
+    is_guest: false,
+    linked_user_id: user.id,
+  });
+
+  if (insertError) {
+    return { error: insertError.message };
   }
 
-  const attachError = await attachPlayerToLeague(league.id, created.id);
+  const attachError = await attachPlayerToLeague(league.id, playerId);
   if (attachError) return { error: attachError };
 
   redirect("/games");
