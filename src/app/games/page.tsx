@@ -4,8 +4,78 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveLeague, getMyRole } from "@/lib/league";
 import { getMyPlayer } from "@/lib/player";
 import { gameMeta } from "@/lib/games/meta";
-import { GameIcon } from "@/components/GameIcon";
+import { CATEGORY_ORDER, CATEGORY_LABELS } from "@/lib/games/categories";
+import { GameIcon, type GameCategory } from "@/components/GameIcon";
 import { GameRoulette } from "@/components/GameRoulette";
+
+// Nombre max de jeux dans "Joué récemment" — au-delà, la section perd son
+// intérêt (autant aller voir la bonne catégorie directement).
+const RECENT_LIMIT = 4;
+
+type GameRow = {
+  code: string;
+  name: string;
+  active: boolean;
+  logo_url: string | null;
+  count: number;
+};
+
+function GameCard({
+  game,
+  href,
+  subtitle,
+  highlighted,
+  disabled,
+}: {
+  game: GameRow;
+  href?: string;
+  subtitle: React.ReactNode;
+  highlighted?: boolean;
+  disabled?: boolean;
+}) {
+  const meta = gameMeta(game.code);
+  const content = (
+    <>
+      <GameIcon category={meta.category} />
+      <div className="flex flex-1 flex-col gap-0.5">
+        <span
+          className={`font-fredoka text-base font-semibold ${disabled ? "text-[#999]" : "text-onjoo-green-900"}`}
+        >
+          {game.name}
+        </span>
+        {subtitle}
+      </div>
+      {game.logo_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
+        <img
+          src={game.logo_url}
+          alt=""
+          className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
+        />
+      )}
+    </>
+  );
+
+  if (disabled || !href) {
+    return (
+      <div
+        className={`card flex items-center gap-4 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="card flex items-center gap-4"
+      style={highlighted ? { borderColor: "#163D2E", borderWidth: 2 } : undefined}
+    >
+      {content}
+    </Link>
+  );
+}
 
 export default async function GamesPage() {
   const league = await getActiveLeague();
@@ -24,7 +94,7 @@ export default async function GamesPage() {
       .select("code, name, active, logo_url")
       .order("active", { ascending: false })
       .order("name", { ascending: true }),
-    supabase.from("matches").select("game_code, status").eq("league_id", league.id),
+    supabase.from("matches").select("game_code, status, created_at").eq("league_id", league.id),
   ]);
 
   // Un observateur (accès support) n'a jamais de fiche joueur — on ne le
@@ -33,14 +103,17 @@ export default async function GamesPage() {
 
   const matchCounts = new Map<string, number>();
   const inProgressCodes = new Set<string>();
+  const lastPlayedAt = new Map<string, string>();
   for (const match of matchesResult.data ?? []) {
     matchCounts.set(match.game_code, (matchCounts.get(match.game_code) ?? 0) + 1);
     if (match.status === "in_progress") inProgressCodes.add(match.game_code);
+    const previous = lastPlayedAt.get(match.game_code);
+    if (!previous || match.created_at > previous) lastPlayedAt.set(match.game_code, match.created_at);
   }
 
   // Le plus joué dans CETTE ligue en premier — une ligue qui ne joue qu'à
   // un seul jeu doit le voir en tête, pas classé alphabétiquement au milieu.
-  const gamesWithCounts = (gamesResult.data ?? [])
+  const gamesWithCounts: GameRow[] = (gamesResult.data ?? [])
     .map((game) => ({
       ...game,
       count: matchCounts.get(game.code) ?? 0,
@@ -52,11 +125,27 @@ export default async function GamesPage() {
     });
 
   const activeGames = gamesWithCounts.filter((game) => game.active);
-  const comingSoonGames = gamesWithCounts.filter((game) => !game.active);
-  // Une partie en cours doit sauter aux yeux tout en haut, avant même le
-  // tri par popularité — on ne veut pas la faire chercher plus bas.
   const inProgressGames = activeGames.filter((game) => inProgressCodes.has(game.code));
-  const otherActiveGames = activeGames.filter((game) => !inProgressCodes.has(game.code));
+
+  // "Joué récemment" : un raccourci vers ce qu'on a l'habitude de sortir,
+  // distinct du tri par popularité — une partie jouée hier doit remonter
+  // même si ce n'est pas historiquement le jeu le plus joué de la ligue.
+  const recentGames = activeGames
+    .filter((game) => !inProgressCodes.has(game.code) && lastPlayedAt.has(game.code))
+    .sort((a, b) => (lastPlayedAt.get(b.code) ?? "").localeCompare(lastPlayedAt.get(a.code) ?? ""))
+    .slice(0, RECENT_LIMIT);
+
+  // Tout le reste (actifs pas encore joués récemment + à venir) rangé par
+  // catégorie plutôt qu'en deux longues listes plates — avec une dizaine
+  // de jeux, dont des "bientôt disponible" mélangés, on ne retrouvait plus
+  // rien.
+  const shownCodes = new Set([...inProgressGames, ...recentGames].map((g) => g.code));
+  const byCategory = new Map<GameCategory, GameRow[]>();
+  for (const category of CATEGORY_ORDER) byCategory.set(category, []);
+  for (const game of gamesWithCounts) {
+    if (shownCodes.has(game.code)) continue;
+    byCategory.get(gameMeta(game.code).category)?.push(game);
+  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-10">
@@ -69,116 +158,94 @@ export default async function GamesPage() {
         </h1>
       </header>
 
-      <GameRoulette games={activeGames.map((game) => ({ code: game.code, name: game.name }))} />
+      <GameRoulette
+        games={activeGames.map((game) => ({
+          code: game.code,
+          name: game.name,
+          category: gameMeta(game.code).category,
+        }))}
+      />
 
       {inProgressGames.length > 0 && (
         <div className="flex flex-col gap-3">
           <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-onjoo-green-900">
             Parties en cours
           </p>
-          {inProgressGames.map((game) => {
-            const meta = gameMeta(game.code);
-            return (
-              <Link
-                key={game.code}
-                href={`/games/${game.code}`}
-                className="card flex items-center gap-4"
-                style={{ borderColor: "#163D2E", borderWidth: 2 }}
-              >
-                <GameIcon category={meta.category} />
-                <div className="flex flex-1 flex-col gap-0.5">
-                  <span className="font-fredoka text-base font-semibold text-onjoo-green-900">
-                    {game.name}
-                  </span>
-                  <span className="flex items-center gap-1.5 font-quicksand text-sm font-semibold text-onjoo-green-900">
-                    <span className="h-1.5 w-1.5 rounded-full bg-onjoo-sage-500" />
-                    Partie en cours — reprendre
-                  </span>
-                </div>
-                {game.logo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
-                  <img
-                    src={game.logo_url}
-                    alt=""
-                    className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
-                  />
-                )}
-              </Link>
-            );
-          })}
+          {inProgressGames.map((game) => (
+            <GameCard
+              key={game.code}
+              game={game}
+              href={`/games/${game.code}`}
+              highlighted
+              subtitle={
+                <span className="flex items-center gap-1.5 font-quicksand text-sm font-semibold text-onjoo-green-900">
+                  <span className="h-1.5 w-1.5 rounded-full bg-onjoo-sage-500" />
+                  Partie en cours — reprendre
+                </span>
+              }
+            />
+          ))}
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {otherActiveGames.map((game) => {
-          const meta = gameMeta(game.code);
-          return (
-            <Link
+      {recentGames.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-onjoo-green-900">
+            Joué récemment
+          </p>
+          {recentGames.map((game) => (
+            <GameCard
               key={game.code}
+              game={game}
               href={`/games/${game.code}`}
-              className="card flex items-center gap-4"
-            >
-              <GameIcon category={meta.category} />
-              <div className="flex flex-1 flex-col gap-0.5">
-                <span className="font-fredoka text-base font-semibold text-onjoo-green-900">
-                  {game.name}
-                </span>
+              subtitle={
                 <span className="font-quicksand text-sm text-[#777]">
                   {`${game.count} partie${game.count > 1 ? "s" : ""} jouée${game.count > 1 ? "s" : ""}`}
                 </span>
-              </div>
-              {game.logo_url && (
-                // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
-                <img
-                  src={game.logo_url}
-                  alt=""
-                  className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
-                />
-              )}
-            </Link>
-          );
-        })}
-        {activeGames.length === 0 && (
-          <p className="font-quicksand text-neutral-500">
-            Aucun jeu pour l&apos;instant.
-          </p>
-        )}
-      </div>
-
-      {comingSoonGames.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Bientôt disponible
-          </p>
-          {comingSoonGames.map((game) => {
-            const meta = gameMeta(game.code);
-            return (
-              <div
-                key={game.code}
-                className="card flex cursor-not-allowed items-center gap-4 opacity-50"
-              >
-                <GameIcon category={meta.category} />
-                <div className="flex flex-1 flex-col gap-0.5">
-                  <span className="font-fredoka text-base font-semibold text-[#999]">
-                    {game.name}
-                  </span>
-                  <span className="font-quicksand text-sm text-[#777]">
-                    Bientôt disponible
-                  </span>
-                </div>
-                {game.logo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
-                  <img
-                    src={game.logo_url}
-                    alt=""
-                    className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
-                  />
-                )}
-              </div>
-            );
-          })}
+              }
+            />
+          ))}
         </div>
       )}
+
+      {activeGames.length === 0 && (
+        <p className="font-quicksand text-neutral-500">Aucun jeu pour l&apos;instant.</p>
+      )}
+
+      {CATEGORY_ORDER.map((category) => {
+        const games = byCategory.get(category) ?? [];
+        if (games.length === 0) return null;
+        return (
+          <div key={category} className="flex flex-col gap-3">
+            <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              {CATEGORY_LABELS[category]}
+            </p>
+            {games.map((game) =>
+              game.active ? (
+                <GameCard
+                  key={game.code}
+                  game={game}
+                  href={`/games/${game.code}`}
+                  subtitle={
+                    <span className="font-quicksand text-sm text-[#777]">
+                      {`${game.count} partie${game.count > 1 ? "s" : ""} jouée${game.count > 1 ? "s" : ""}`}
+                    </span>
+                  }
+                />
+              ) : (
+                <GameCard
+                  key={game.code}
+                  game={game}
+                  disabled
+                  subtitle={
+                    <span className="font-quicksand text-sm text-[#777]">Bientôt disponible</span>
+                  }
+                />
+              ),
+            )}
+          </div>
+        );
+      })}
     </main>
   );
 }

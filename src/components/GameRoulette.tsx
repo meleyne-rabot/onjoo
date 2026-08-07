@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AVATAR_COLORS } from "@/lib/avatar";
+import { CATEGORY_ORDER, CATEGORY_LABELS } from "@/lib/games/categories";
+import type { GameCategory } from "@/components/GameIcon";
 
-type RouletteGame = { code: string; name: string };
+type RouletteGame = { code: string; name: string; category: GameCategory };
 
 // Nombre de tours complets avant de s'arrêter sur le jeu tiré, purement
 // pour le spectacle — l'angle final seul détermine le résultat.
@@ -31,24 +33,46 @@ export function GameRoulette({ games }: { games: RouletteGame[] }) {
   const [winner, setWinner] = useState<RouletteGame | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const categoriesPresent = useMemo(
+    () => CATEGORY_ORDER.filter((category) => games.some((g) => g.category === category)),
+    [games],
+  );
+  // Tout coché par défaut — le filtre sert à RESTREINDRE au besoin, pas à
+  // devoir tout re-sélectionner à chaque ouverture.
+  const [selectedCategories, setSelectedCategories] = useState<Set<GameCategory>>(
+    () => new Set(categoriesPresent),
+  );
+
   if (games.length < 2) return null;
+
+  const filteredGames = games.filter((g) => selectedCategories.has(g.category));
 
   const size = 260;
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - 6;
-  const sliceAngle = (2 * Math.PI) / games.length;
+  const sliceAngle = filteredGames.length > 0 ? (2 * Math.PI) / filteredGames.length : 0;
+
+  function toggleCategory(category: GameCategory) {
+    setWinner(null);
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }
 
   function spin() {
-    if (spinning) return;
+    if (spinning || filteredGames.length < 2) return;
     setWinner(null);
     setSpinning(true);
 
-    const winnerIndex = Math.floor(Math.random() * games.length);
+    const winnerIndex = Math.floor(Math.random() * filteredGames.length);
     // La roue tourne dans le sens horaire ; le pointeur est fixe en haut
     // (angle -90°). Pour que la tranche gagnante finisse sous le pointeur,
     // on vise le milieu de cette tranche puis on compense la rotation.
-    const sliceCenterDeg = (winnerIndex + 0.5) * (360 / games.length);
+    const sliceCenterDeg = (winnerIndex + 0.5) * (360 / filteredGames.length);
     const targetRotation = 360 * EXTRA_SPINS + (360 - sliceCenterDeg);
 
     // Repart toujours d'un multiple de 360 pour que EXTRA_SPINS tours
@@ -58,7 +82,7 @@ export function GameRoulette({ games }: { games: RouletteGame[] }) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       setSpinning(false);
-      setWinner(games[winnerIndex]);
+      setWinner(filteredGames[winnerIndex]);
     }, SPIN_DURATION_MS);
   }
 
@@ -73,55 +97,88 @@ export function GameRoulette({ games }: { games: RouletteGame[] }) {
           <div className="card flex w-full max-w-sm flex-col items-center gap-5 py-6">
             <h2 className="font-fredoka text-xl font-bold text-onjoo-green-900">La roulette des jeux</h2>
 
-            <div className="relative" style={{ width: size, height: size + 18 }}>
-              <div
-                className="absolute left-1/2 top-0 z-10 -translate-x-1/2"
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeft: "10px solid transparent",
-                  borderRight: "10px solid transparent",
-                  borderTop: "16px solid #163D2E",
-                }}
-              />
-              <svg
-                width={size}
-                height={size}
-                viewBox={`0 0 ${size} ${size}`}
-                className="absolute left-0 top-[18px]"
-                style={{
-                  transform: `rotate(${rotation}deg)`,
-                  transition: spinning ? `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.17, 0.67, 0.2, 1)` : "none",
-                }}
-              >
-                {games.map((game, i) => {
-                  const start = i * sliceAngle - Math.PI / 2;
-                  const end = start + sliceAngle;
-                  const mid = start + sliceAngle / 2;
-                  const labelX = cx + (r * 0.62) * Math.cos(mid);
-                  const labelY = cy + (r * 0.62) * Math.sin(mid);
-                  const labelDeg = (mid * 180) / Math.PI + 90;
+            {categoriesPresent.length > 1 && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {categoriesPresent.map((category) => {
+                  const active = selectedCategories.has(category);
                   return (
-                    <g key={game.code}>
-                      <path d={arcPath(cx, cy, r, start, end)} fill={AVATAR_COLORS[i % AVATAR_COLORS.length]} stroke="#FAF1DE" strokeWidth={2} />
-                      <text
-                        x={labelX}
-                        y={labelY}
-                        fill="#fff"
-                        fontSize={12}
-                        fontWeight={700}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        transform={`rotate(${labelDeg} ${labelX} ${labelY})`}
-                      >
-                        {game.name}
-                      </text>
-                    </g>
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => toggleCategory(category)}
+                      className={`rounded-full border-2 px-3 py-1 font-quicksand text-xs font-bold ${
+                        active ? "border-onjoo-green-900 text-onjoo-green-900" : "border-[#ddd] text-[#999]"
+                      }`}
+                    >
+                      {CATEGORY_LABELS[category]}
+                    </button>
                   );
                 })}
-                <circle cx={cx} cy={cy} r={16} fill="#FAF1DE" stroke="#163D2E" strokeWidth={2} />
-              </svg>
-            </div>
+              </div>
+            )}
+
+            {filteredGames.length < 2 ? (
+              <p className="font-quicksand text-sm text-[#777]">
+                Sélectionne au moins deux catégories pour lancer la roulette.
+              </p>
+            ) : (
+              <div className="relative" style={{ width: size, height: size + 18 }}>
+                <div
+                  className="absolute left-1/2 top-0 z-10 -translate-x-1/2"
+                  style={{
+                    width: 0,
+                    height: 0,
+                    borderLeft: "10px solid transparent",
+                    borderRight: "10px solid transparent",
+                    borderTop: "16px solid #163D2E",
+                  }}
+                />
+                <svg
+                  width={size}
+                  height={size}
+                  viewBox={`0 0 ${size} ${size}`}
+                  className="absolute left-0 top-[18px]"
+                  style={{
+                    transform: `rotate(${rotation}deg)`,
+                    transition: spinning
+                      ? `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.17, 0.67, 0.2, 1)`
+                      : "none",
+                  }}
+                >
+                  {filteredGames.map((game, i) => {
+                    const start = i * sliceAngle - Math.PI / 2;
+                    const end = start + sliceAngle;
+                    const mid = start + sliceAngle / 2;
+                    const labelX = cx + r * 0.62 * Math.cos(mid);
+                    const labelY = cy + r * 0.62 * Math.sin(mid);
+                    const labelDeg = (mid * 180) / Math.PI + 90;
+                    return (
+                      <g key={game.code}>
+                        <path
+                          d={arcPath(cx, cy, r, start, end)}
+                          fill={AVATAR_COLORS[i % AVATAR_COLORS.length]}
+                          stroke="#FAF1DE"
+                          strokeWidth={2}
+                        />
+                        <text
+                          x={labelX}
+                          y={labelY}
+                          fill="#fff"
+                          fontSize={12}
+                          fontWeight={700}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          transform={`rotate(${labelDeg} ${labelX} ${labelY})`}
+                        >
+                          {game.name}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  <circle cx={cx} cy={cy} r={16} fill="#FAF1DE" stroke="#163D2E" strokeWidth={2} />
+                </svg>
+              </div>
+            )}
 
             {winner ? (
               <div className="flex flex-col items-center gap-3">
@@ -137,7 +194,12 @@ export function GameRoulette({ games }: { games: RouletteGame[] }) {
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={spin} disabled={spinning} className="btn-primary">
+              <button
+                type="button"
+                onClick={spin}
+                disabled={spinning || filteredGames.length < 2}
+                className="btn-primary"
+              >
                 {spinning ? "..." : "Lancer la roulette"}
               </button>
             )}

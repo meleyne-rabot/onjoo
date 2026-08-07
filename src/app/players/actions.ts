@@ -19,6 +19,18 @@ export async function addPlayer(_prevState: { error: string | null }, formData: 
   if (!league) return { error: "Aucune ligue active." };
 
   const supabase = await createClient();
+
+  // Diagnostic temporaire (incident RLS players_insert, 2026-08) : la
+  // policy vérifiée en base est correcte mais l'insert échoue quand même
+  // en prod — on vérifie ici, dans le MÊME contexte serveur que l'insert
+  // qui suit, si auth.uid() se résout bien côté serveur.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Diagnostic : session non reconnue côté serveur (auth.getUser() renvoie null)." };
+  }
+
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
   const { data: created, error: insertError } = await supabase
@@ -28,7 +40,12 @@ export async function addPlayer(_prevState: { error: string | null }, formData: 
     .single();
 
   if (insertError || !created) {
-    return { error: insertError?.message ?? "Échec de la création du profil." };
+    const details = [insertError?.code, insertError?.details, insertError?.hint]
+      .filter(Boolean)
+      .join(" | ");
+    return {
+      error: `Diagnostic : uid=${user.id} — ${insertError?.message ?? "Échec de la création du profil."}${details ? ` (${details})` : ""}`,
+    };
   }
 
   const { error: attachError } = await supabase
