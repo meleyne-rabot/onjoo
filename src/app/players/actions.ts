@@ -31,6 +31,13 @@ export async function addPlayer(_prevState: { error: string | null }, formData: 
     return { error: "Diagnostic : session non reconnue côté serveur (auth.getUser() renvoie null)." };
   }
 
+  // Étape 2 du diagnostic : ce que POSTGRES voit comme auth.uid() pour la
+  // requête PostgREST elle-même, indépendamment de ce que le SDK JS a pu
+  // résoudre localement via getUser() — les deux peuvent diverger si
+  // l'en-tête Authorization envoyé à PostgREST ne correspond pas à la
+  // session lue côté SDK.
+  const { data: dbUid, error: dbUidError } = await supabase.rpc("debug_auth_uid");
+
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
   const { data: created, error: insertError } = await supabase
@@ -44,7 +51,7 @@ export async function addPlayer(_prevState: { error: string | null }, formData: 
       .filter(Boolean)
       .join(" | ");
     return {
-      error: `Diagnostic : uid=${user.id} — ${insertError?.message ?? "Échec de la création du profil."}${details ? ` (${details})` : ""}`,
+      error: `Diagnostic : uid(JS)=${user.id} uid(DB)=${dbUid ?? `null/erreur:${dbUidError?.message}`} — ${insertError?.message ?? "Échec de la création du profil."}${details ? ` (${details})` : ""}`,
     };
   }
 
