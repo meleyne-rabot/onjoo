@@ -7,7 +7,6 @@ import { gameMeta } from "@/lib/games/meta";
 import { CATEGORY_ORDER, CATEGORY_LABELS } from "@/lib/games/categories";
 import { GameIcon, type GameCategory } from "@/components/GameIcon";
 import { GameRoulette } from "@/components/GameRoulette";
-import { disableGameForLeague, enableGameForLeague } from "./actions";
 
 // Nombre max de jeux dans "Joué récemment" — au-delà, la section perd son
 // intérêt (autant aller voir la bonne catégorie directement).
@@ -21,50 +20,18 @@ type GameRow = {
   count: number;
 };
 
-// Petit switch vert/gris (façon iOS) plutôt qu'un gros bouton texte — reste
-// un <form>/<button> en dehors du <Link> (voir GameCard) pour ne jamais
-// imbriquer un élément interactif dans un <a>.
-function GameToggleSwitch({
-  game,
-  action,
-  on,
-}: {
-  game: GameRow;
-  action: (formData: FormData) => void;
-  on: boolean;
-}) {
-  return (
-    <form action={action} className="shrink-0">
-      <input type="hidden" name="game_code" value={game.code} />
-      <button
-        type="submit"
-        aria-label={on ? `Désactiver ${game.name}` : `Réactiver ${game.name}`}
-        className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
-        style={{ backgroundColor: on ? "#8A9A6E" : "#ddd" }}
-      >
-        <span
-          className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left]"
-          style={{ left: on ? 22 : 2 }}
-        />
-      </button>
-    </form>
-  );
-}
-
 function GameCard({
   game,
   href,
   subtitle,
   highlighted,
   disabled,
-  toggle,
 }: {
   game: GameRow;
   href?: string;
   subtitle: React.ReactNode;
   highlighted?: boolean;
   disabled?: boolean;
-  toggle?: React.ReactNode;
 }) {
   const meta = gameMeta(game.code);
   const inner = (
@@ -95,18 +62,13 @@ function GameCard({
       ) : (
         <div className="flex min-w-0 flex-1 items-center gap-4">{inner}</div>
       )}
-      {(game.logo_url || toggle) && (
-        <div className="flex shrink-0 flex-col items-center gap-1.5">
-          {game.logo_url && (
-            // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
-            <img
-              src={game.logo_url}
-              alt=""
-              className="h-11 w-[72px] rounded-[10px] bg-[#FAF1DE] object-contain p-1"
-            />
-          )}
-          {toggle}
-        </div>
+      {game.logo_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
+        <img
+          src={game.logo_url}
+          alt=""
+          className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
+        />
       )}
     </div>
   );
@@ -168,7 +130,6 @@ export default async function GamesPage() {
   // veut pas bloquer une partie qu'on est en train de finir.
   const inProgressGames = activeGames.filter((game) => inProgressCodes.has(game.code));
   const visibleActiveGames = activeGames.filter((game) => !disabledCodes.has(game.code));
-  const leagueDisabledGames = activeGames.filter((game) => disabledCodes.has(game.code));
 
   // "Joué récemment" : un raccourci vers ce qu'on a l'habitude de sortir,
   // distinct du tri par popularité — une partie jouée hier doit remonter
@@ -274,7 +235,6 @@ export default async function GamesPage() {
                       {`${game.count} partie${game.count > 1 ? "s" : ""} jouée${game.count > 1 ? "s" : ""}`}
                     </span>
                   }
-                  toggle={<GameToggleSwitch game={game} action={disableGameForLeague} on />}
                 />
               ) : (
                 <GameCard
@@ -290,23 +250,6 @@ export default async function GamesPage() {
           </div>
         );
       })}
-
-      {leagueDisabledGames.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Jeux inactifs pour {league.name}
-          </p>
-          {leagueDisabledGames.map((game) => (
-            <GameCard
-              key={game.code}
-              game={game}
-              disabled
-              subtitle={<span className="font-quicksand text-sm text-[#777]">Désactivé pour cette ligue</span>}
-              toggle={<GameToggleSwitch game={game} action={enableGameForLeague} on={false} />}
-            />
-          ))}
-        </div>
-      )}
     </main>
   );
 }
