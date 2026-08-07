@@ -67,6 +67,16 @@ create table games (
   logo_url text
 );
 
+-- Jeux désactivés par ligue : actif par défaut pour toutes (catalogue
+-- global inchangé), une ligue ne stocke que les exceptions qu'elle a
+-- explicitement désactivées (ex. une ligue ne possède pas Harmonie).
+create table league_games_disabled (
+  league_id uuid not null references leagues (id) on delete cascade,
+  game_code text not null references games (code) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (league_id, game_code)
+);
+
 create table matches (
   id uuid primary key default gen_random_uuid(),
   league_id uuid not null references leagues (id) on delete cascade,
@@ -476,6 +486,24 @@ create policy "league_players_delete" on league_players
 -- games: lecture publique pour les utilisateurs authentifiés, pas d'écriture
 create policy "games_select" on games
   for select to authenticated using (true);
+
+-- league_games_disabled
+alter table league_games_disabled enable row level security;
+
+create policy "league_games_disabled_select" on league_games_disabled
+  for select using (
+    league_id in (select league_id from league_members where user_id = auth.uid())
+  );
+
+create policy "league_games_disabled_insert" on league_games_disabled
+  for insert with check (
+    league_id in (select league_id from league_members where user_id = auth.uid())
+  );
+
+create policy "league_games_disabled_delete" on league_games_disabled
+  for delete using (
+    league_id in (select league_id from league_members where user_id = auth.uid())
+  );
 
 -- matches
 create policy "matches_select" on matches

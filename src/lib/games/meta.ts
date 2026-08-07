@@ -16,6 +16,8 @@ export const GAME_META: Record<string, { label: string; category: GameCategory }
   six_qui_prend: { label: "6 qui prend", category: "cartes" },
   molkky: { label: "Mölkky", category: "exterieur" },
   cornhole: { label: "Cornhole", category: "exterieur" },
+  le_9: { label: "Le 9", category: "cartes" },
+  le_5: { label: "Le 5", category: "cartes" },
 };
 
 export function gameMeta(code: string) {

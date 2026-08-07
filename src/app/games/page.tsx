@@ -7,6 +7,7 @@ import { gameMeta } from "@/lib/games/meta";
 import { CATEGORY_ORDER, CATEGORY_LABELS } from "@/lib/games/categories";
 import { GameIcon, type GameCategory } from "@/components/GameIcon";
 import { GameRoulette } from "@/components/GameRoulette";
+import { disableGameForLeague, enableGameForLeague } from "./actions";
 
 // Nombre max de jeux dans "Joué récemment" — au-delà, la section perd son
 // intérêt (autant aller voir la bonne catégorie directement).
@@ -20,18 +21,42 @@ type GameRow = {
   count: number;
 };
 
+function ToggleGameButton({
+  game,
+  action,
+  label,
+}: {
+  game: GameRow;
+  action: (formData: FormData) => void;
+  label: string;
+}) {
+  return (
+    <form action={action}>
+      <input type="hidden" name="game_code" value={game.code} />
+      <button
+        type="submit"
+        className="whitespace-nowrap rounded-full border-2 border-[#ddd] px-3 py-1.5 font-quicksand text-xs font-semibold text-[#777]"
+      >
+        {label}
+      </button>
+    </form>
+  );
+}
+
 function GameCard({
   game,
   href,
   subtitle,
   highlighted,
   disabled,
+  action,
 }: {
   game: GameRow;
   href?: string;
   subtitle: React.ReactNode;
   highlighted?: boolean;
   disabled?: boolean;
+  action?: React.ReactNode;
 }) {
   const meta = gameMeta(game.code);
   const content = (
@@ -56,24 +81,31 @@ function GameCard({
     </>
   );
 
-  if (disabled || !href) {
-    return (
-      <div
-        className={`card flex items-center gap-4 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
-      >
+  const card =
+    disabled || !href ? (
+      <div className={`card flex items-center gap-4 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
         {content}
       </div>
+    ) : (
+      <Link
+        href={href}
+        className="card flex items-center gap-4"
+        style={highlighted ? { borderColor: "#163D2E", borderWidth: 2 } : undefined}
+      >
+        {content}
+      </Link>
     );
-  }
 
+  if (!action) return card;
+
+  // L'action (désactiver/réactiver) est un sibling du Link, jamais imbriquée
+  // dedans — un <button>/<form> à l'intérieur d'un <a> est invalide en HTML
+  // et casse le clic sur la carte.
   return (
-    <Link
-      href={href}
-      className="card flex items-center gap-4"
-      style={highlighted ? { borderColor: "#163D2E", borderWidth: 2 } : undefined}
-    >
-      {content}
-    </Link>
+    <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1">{card}</div>
+      {action}
+    </div>
   );
 }
 
@@ -83,10 +115,10 @@ export default async function GamesPage() {
 
   const supabase = await createClient();
 
-  // Les 3 requêtes sont indépendantes une fois la ligue connue : en
-  // parallèle plutôt qu'en série, et un seul aller-retour pour les
-  // compteurs de parties (par game_code) plutôt qu'une requête par jeu.
-  const [myPlayer, myRole, gamesResult, matchesResult] = await Promise.all([
+  // Les requêtes sont indépendantes une fois la ligue connue : en parallèle
+  // plutôt qu'en série, et un seul aller-retour pour les compteurs de
+  // parties (par game_code) plutôt qu'une requête par jeu.
+  const [myPlayer, myRole, gamesResult, matchesResult, disabledResult] = await Promise.all([
     getMyPlayer(league.id),
     getMyRole(league.id),
     supabase
@@ -95,6 +127,7 @@ export default async function GamesPage() {
       .order("active", { ascending: false })
       .order("name", { ascending: true }),
     supabase.from("matches").select("game_code, status, created_at").eq("league_id", league.id),
+    supabase.from("league_games_disabled").select("game_code").eq("league_id", league.id),
   ]);
 
   // Un observateur (accès support) n'a jamais de fiche joueur — on ne le
@@ -111,6 +144,8 @@ export default async function GamesPage() {
     if (!previous || match.created_at > previous) lastPlayedAt.set(match.game_code, match.created_at);
   }
 
+  const disabledCodes = new Set((disabledResult.data ?? []).map((row) => row.game_code));
+
   // Le plus joué dans CETTE ligue en premier — une ligue qui ne joue qu'à
   // un seul jeu doit le voir en tête, pas classé alphabétiquement au milieu.
   const gamesWithCounts: GameRow[] = (gamesResult.data ?? [])
@@ -125,12 +160,17 @@ export default async function GamesPage() {
     });
 
   const activeGames = gamesWithCounts.filter((game) => game.active);
+  // Un jeu désactivé par la ligue disparaît de la découverte (récent,
+  // catégories, roulette) mais jamais d'une partie déjà en cours — on ne
+  // veut pas bloquer une partie qu'on est en train de finir.
   const inProgressGames = activeGames.filter((game) => inProgressCodes.has(game.code));
+  const visibleActiveGames = activeGames.filter((game) => !disabledCodes.has(game.code));
+  const leagueDisabledGames = activeGames.filter((game) => disabledCodes.has(game.code));
 
   // "Joué récemment" : un raccourci vers ce qu'on a l'habitude de sortir,
   // distinct du tri par popularité — une partie jouée hier doit remonter
   // même si ce n'est pas historiquement le jeu le plus joué de la ligue.
-  const recentGames = activeGames
+  const recentGames = visibleActiveGames
     .filter((game) => !inProgressCodes.has(game.code) && lastPlayedAt.has(game.code))
     .sort((a, b) => (lastPlayedAt.get(b.code) ?? "").localeCompare(lastPlayedAt.get(a.code) ?? ""))
     .slice(0, RECENT_LIMIT);
@@ -143,7 +183,7 @@ export default async function GamesPage() {
   const byCategory = new Map<GameCategory, GameRow[]>();
   for (const category of CATEGORY_ORDER) byCategory.set(category, []);
   for (const game of gamesWithCounts) {
-    if (shownCodes.has(game.code)) continue;
+    if (shownCodes.has(game.code) || disabledCodes.has(game.code)) continue;
     byCategory.get(gameMeta(game.code).category)?.push(game);
   }
 
@@ -159,7 +199,7 @@ export default async function GamesPage() {
       </header>
 
       <GameRoulette
-        games={activeGames.map((game) => ({
+        games={visibleActiveGames.map((game) => ({
           code: game.code,
           name: game.name,
           category: gameMeta(game.code).category,
@@ -231,6 +271,9 @@ export default async function GamesPage() {
                       {`${game.count} partie${game.count > 1 ? "s" : ""} jouée${game.count > 1 ? "s" : ""}`}
                     </span>
                   }
+                  action={
+                    <ToggleGameButton game={game} action={disableGameForLeague} label="Désactiver" />
+                  }
                 />
               ) : (
                 <GameCard
@@ -246,6 +289,23 @@ export default async function GamesPage() {
           </div>
         );
       })}
+
+      {leagueDisabledGames.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="font-quicksand text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            Jeux inactifs pour {league.name}
+          </p>
+          {leagueDisabledGames.map((game) => (
+            <GameCard
+              key={game.code}
+              game={game}
+              disabled
+              subtitle={<span className="font-quicksand text-sm text-[#777]">Désactivé pour cette ligue</span>}
+              action={<ToggleGameButton game={game} action={enableGameForLeague} label="Réactiver" />}
+            />
+          ))}
+        </div>
+      )}
     </main>
   );
 }
