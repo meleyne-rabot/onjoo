@@ -9,27 +9,38 @@ import { randomAvatar } from "@/lib/avatar";
 // Crée un profil invité (durable, avec stats) — jamais lié à un compte.
 // Un vrai compte ne s'obtient que par lien d'invitation ou en rattachant
 // un profil déjà existant ailleurs (cf. addExistingPlayerToLeague).
-export async function addPlayer(formData: FormData) {
+// Signature (prevState, formData) => utilisée avec useActionState côté
+// client pour remonter une erreur au lieu de la faire échouer en silence.
+export async function addPlayer(_prevState: { error: string | null }, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  if (!name) return { error: "Nom manquant." };
 
   const league = await getActiveLeague();
-  if (!league) return;
+  if (!league) return { error: "Aucune ligue active." };
 
   const supabase = await createClient();
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
-  const { data: created } = await supabase
+  const { data: created, error: insertError } = await supabase
     .from("players")
     .insert({ name, avatar_color: avatar.color, avatar_shape: avatar.shape, is_guest: true })
     .select("id")
     .single();
 
-  if (created) {
-    await supabase.from("league_players").insert({ league_id: league.id, player_id: created.id });
+  if (insertError || !created) {
+    return { error: insertError?.message ?? "Échec de la création du profil." };
+  }
+
+  const { error: attachError } = await supabase
+    .from("league_players")
+    .insert({ league_id: league.id, player_id: created.id });
+
+  if (attachError) {
+    return { error: attachError.message };
   }
 
   revalidatePath("/players");
+  return { error: null };
 }
 
 export async function updatePlayerAvatar(playerId: string, color: string, shape: string) {

@@ -5,6 +5,7 @@ import { getActiveLeague, getMyRole } from "@/lib/league";
 import { getMyPlayer } from "@/lib/player";
 import { gameMeta } from "@/lib/games/meta";
 import { GameIcon } from "@/components/GameIcon";
+import { GameRoulette } from "@/components/GameRoulette";
 
 export default async function GamesPage() {
   const league = await getActiveLeague();
@@ -67,6 +68,8 @@ export default async function GamesPage() {
           Nos jeux
         </h1>
       </header>
+
+      <GameRoulette games={activeGames.map((game) => ({ code: game.code, name: game.name }))} />
 
       {inProgressGames.length > 0 && (
         <div className="flex flex-col gap-3">

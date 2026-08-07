@@ -33,106 +33,70 @@ function isQwirkleRound(r: RoundRow): boolean {
   return explicit === true || (explicit === undefined && r.points >= 12);
 }
 
-type DonutPlayer = { name: string; avatarColor: string; avatarShape: string; wins: number };
+type Segment = { key: string; avatarColor: string; wins: number };
 
-// Position d'une étiquette au milieu d'un arc, sur l'anneau (le cercle
-// démarre à midi, -90° dans le repère SVG standard où 0° pointe à droite).
-function arcMidpoint(cx: number, cy: number, radius: number, startFraction: number, sweepFraction: number) {
-  const midAngleDeg = (startFraction + sweepFraction / 2) * 360 - 90;
-  const rad = (midAngleDeg * Math.PI) / 180;
-  return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
-}
-
-function HeadToHeadDonut({
-  playerA,
-  playerB,
-  totalGames,
-}: {
-  playerA: DonutPlayer;
-  playerB: DonutPlayer;
-  totalGames: number;
-}) {
-  const size = 280;
+// Anneau seul (pas de légende, pas d'étiquette) — la répartition des
+// victoires entre N joueurs, dans l'ordre fourni.
+function Ring({ segments, size = 130, strokeWidth = 20 }: { segments: Segment[]; size?: number; strokeWidth?: number }) {
   const cx = size / 2;
-  const strokeWidth = 20;
-  const r = 85;
+  const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
-  const fracA = totalGames > 0 ? playerA.wins / totalGames : 0;
-  const fracB = 1 - fracA;
-  // Dessinée en second, la fiche A finit du côté "gauche" du donut quand
-  // les deux parts sont proches de 50/50 (le tracé démarre à midi et
-  // avance dans le sens horaire : ce qui est tracé en premier occupe la
-  // droite, ce qui est tracé en second occupe la gauche) — pour que la
-  // couleur de la carte de gauche corresponde à l'arc de gauche.
-  const lenB = fracB * circumference;
-  const lenA = circumference - lenB;
-  const pctA = Math.round(fracA * 100);
-  const pctB = 100 - pctA;
-  const labelRadius = r + strokeWidth / 2 + 18;
-  const chipRadius = 18;
-  const posB = arcMidpoint(cx, cx, labelRadius, 0, fracB);
-  const posA = arcMidpoint(cx, cx, labelRadius, fracB, fracA);
+  const total = segments.reduce((sum, s) => sum + s.wins, 0);
+
+  const arcs = segments.reduce<{ key: string; avatarColor: string; len: number; offset: number }[]>((acc, s) => {
+    const cumulative = acc.reduce((sum, a) => sum + a.len, 0);
+    const fraction = total > 0 ? s.wins / total : 1 / segments.length;
+    const len = fraction * circumference;
+    acc.push({ key: s.key, avatarColor: s.avatarColor, len, offset: -cumulative });
+    return acc;
+  }, []);
 
   return (
-    <div className="flex flex-col items-center">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="#eee" strokeWidth={strokeWidth} />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="#eee" strokeWidth={strokeWidth} />
+      {arcs.map((a) => (
         <circle
+          key={a.key}
           cx={cx}
           cy={cx}
           r={r}
           fill="none"
-          stroke={playerB.avatarColor}
+          stroke={a.avatarColor}
           strokeWidth={strokeWidth}
-          strokeDasharray={`${lenB} ${circumference - lenB}`}
+          strokeDasharray={`${a.len} ${circumference - a.len}`}
+          strokeDashoffset={a.offset}
           transform={`rotate(-90 ${cx} ${cx})`}
         />
-        <circle
-          cx={cx}
-          cy={cx}
-          r={r}
-          fill="none"
-          stroke={playerA.avatarColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${lenA} ${circumference - lenA}`}
-          strokeDashoffset={-lenB}
-          transform={`rotate(-90 ${cx} ${cx})`}
-        />
-        <text x={cx} y={cx - 6} textAnchor="middle" fontFamily="Fredoka" fontSize="20" fontWeight="700" fill="#163D2E">
-          {playerA.wins}-{playerB.wins}
-        </text>
-        <text x={cx} y={cx + 14} textAnchor="middle" fontFamily="Quicksand" fontSize="11" fill="#999">
-          victoires sur {totalGames} partie{totalGames > 1 ? "s" : ""}
-        </text>
-        {totalGames > 0 && (
-          <>
-            <circle cx={posA.x} cy={posA.y} r={chipRadius} fill={playerA.avatarColor} />
-            <text
-              x={posA.x}
-              y={posA.y + 5}
-              textAnchor="middle"
-              fontFamily="Fredoka"
-              fontSize="14"
-              fontWeight="700"
-              fill="#fff"
-            >
-              {pctA}%
-            </text>
-            <circle cx={posB.x} cy={posB.y} r={chipRadius} fill={playerB.avatarColor} />
-            <text
-              x={posB.x}
-              y={posB.y + 5}
-              textAnchor="middle"
-              fontFamily="Fredoka"
-              fontSize="14"
-              fontWeight="700"
-              fill="#fff"
-            >
-              {pctB}%
-            </text>
-          </>
-        )}
-      </svg>
+      ))}
+    </svg>
+  );
+}
+
+// Anneau + légende (point coloré, nom, %) à droite — utilisé pour le
+// classement général comme pour un face-à-face, la légende fait toujours
+// le lien couleur ↔ joueur, plus besoin d'étiquettes sur l'anneau lui-même.
+function DonutWithLegend({
+  title,
+  players,
+}: {
+  title: string;
+  players: { key: string; name: string; avatarColor: string; wins: number }[];
+}) {
+  const total = players.reduce((sum, p) => sum + p.wins, 0);
+  return (
+    <div className="card flex items-center gap-5 py-5">
+      <Ring segments={players} />
+      <div className="flex flex-col gap-2">
+        <span className="font-quicksand text-sm font-semibold text-[#999]">{title}</span>
+        {players.map((p) => (
+          <div key={p.key} className="flex items-center gap-2">
+            <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: p.avatarColor }} />
+            <span className="font-fredoka text-base font-bold text-onjoo-green-900">
+              {p.name} · {total > 0 ? Math.round((p.wins / total) * 100) : 0}%
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -148,92 +112,21 @@ type LeaderRow = {
   totalQwirkles: number;
 };
 
-// Le classement lui-même, en donut : une part par joueur, proportionnelle
-// à sa part des victoires totales — marche pour n'importe quel nombre de
-// joueurs (2 ou plus), contrairement au face-à-face qui est spécifiquement
-// une comparaison à deux. Pour 2 joueurs précisément, le premier de la
-// liste est dessiné en second (même trick que HeadToHeadDonut) pour finir
-// à gauche, aligné avec sa carte de stats juste en dessous.
-function LeaderboardDonut({ players, showQwirkles }: { players: LeaderRow[]; showQwirkles: boolean }) {
-  const size = 280;
-  const cx = size / 2;
-  const strokeWidth = 20;
-  const r = 85;
-  const circumference = 2 * Math.PI * r;
-  const labelRadius = r + strokeWidth / 2 + 18;
-  const chipRadius = 18;
-  const totalWins = players.reduce((sum, p) => sum + p.wins, 0);
-  const drawOrder = players.length === 2 ? [players[1], players[0]] : players;
-
-  const segments = drawOrder.reduce<
-    { player: LeaderRow; len: number; offset: number; pct: number; pos: { x: number; y: number }; fraction: number; cumulativeEnd: number }[]
-  >((acc, p) => {
-    const cumulativeFraction = acc.length > 0 ? acc[acc.length - 1].cumulativeEnd : 0;
-    const fraction = totalWins > 0 ? p.wins / totalWins : 1 / players.length;
-    const len = fraction * circumference;
-    const offset = -cumulativeFraction * circumference;
-    const pos = arcMidpoint(cx, cx, labelRadius, cumulativeFraction, fraction);
-    acc.push({ player: p, len, offset, pct: Math.round(fraction * 100), pos, fraction, cumulativeEnd: cumulativeFraction + fraction });
-    return acc;
-  }, []);
-
+function LeaderCard({ player, showQwirkles }: { player: LeaderRow; showQwirkles: boolean }) {
   return (
-    <div className="card flex flex-col items-center gap-4 py-6">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="#eee" strokeWidth={strokeWidth} />
-        {segments.map((s) => (
-          <circle
-            key={s.player.playerId}
-            cx={cx}
-            cy={cx}
-            r={r}
-            fill="none"
-            stroke={s.player.avatarColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${s.len} ${circumference - s.len}`}
-            strokeDashoffset={s.offset}
-            transform={`rotate(-90 ${cx} ${cx})`}
-          />
-        ))}
-        <text x={cx} y={cx + 4} textAnchor="middle" fontFamily="Quicksand" fontSize="11" fill="#999">
-          répartition des victoires
-        </text>
-        {/* Sous ~6%, la part est trop fine pour porter une étiquette lisible sans chevaucher ses voisines. */}
-        {segments
-          .filter((s) => s.fraction >= 0.06)
-          .map((s) => (
-            <g key={`${s.player.playerId}-label`}>
-              <circle cx={s.pos.x} cy={s.pos.y} r={chipRadius} fill={s.player.avatarColor} />
-              <text
-                x={s.pos.x}
-                y={s.pos.y + 5}
-                textAnchor="middle"
-                fontFamily="Fredoka"
-                fontSize="14"
-                fontWeight="700"
-                fill="#fff"
-              >
-                {s.pct}%
-              </text>
-            </g>
-          ))}
-      </svg>
-      <div className="grid w-full grid-cols-2 gap-3">
-        {players.map((p) => (
-          <div key={p.playerId} className="flex flex-col items-center gap-1 text-center">
-            <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={40} />
-            <span className="font-quicksand text-sm font-semibold text-onjoo-green-900">{p.name}</span>
-            <span className="font-quicksand text-xs text-[#777]">
-              {p.wins} 🏆 · {p.played} partie{p.played > 1 ? "s" : ""}
-            </span>
-            <span className="font-quicksand text-xs text-[#777]">
-              {Math.round(p.totalScore / p.played)} pts en moyenne
-            </span>
-            {showQwirkles && (
-              <span className="font-quicksand text-xs text-[#777]">{p.totalQwirkles} Qwirkles au total</span>
-            )}
-          </div>
-        ))}
+    <div className="card flex items-center gap-3 py-4">
+      <AvatarBadge color={player.avatarColor} shape={player.avatarShape} size={48} />
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="font-fredoka text-lg font-bold text-onjoo-green-900">{player.name}</span>
+          <span>⭐</span>
+          <span className="font-fredoka text-lg font-bold text-onjoo-green-900">{player.wins}</span>
+        </div>
+        <span className="font-quicksand text-sm text-[#777]">
+          {player.played} partie{player.played > 1 ? "s" : ""} · {Math.round(player.totalScore / player.played)} pts
+          moy.
+          {showQwirkles && ` · ${player.totalQwirkles} Qwirkles`}
+        </span>
       </div>
     </div>
   );
@@ -326,18 +219,19 @@ export default async function GameStatsPage({
       total: players.reduce((sum, mp) => sum + (mp.final_score ?? 0), 0),
       qwirkles,
       names: players.map(participantName).join(", "),
-      playerIds: players.map((mp) => mp.player_id).filter((id): id is string => Boolean(id)),
     };
   });
 
   const leaderMap = new Map<string, LeaderRow>();
   const personalScores: { playerId: string; matchId: string; score: number }[] = [];
+  const personalQwirkles: { playerId: string; matchId: string; qwirkles: number }[] = [];
   for (const m of rows) {
     for (const mp of m.match_players ?? []) {
       // Joueur ponctuel (pas de fiche) : pas d'identité à suivre dans un classement.
       if (!mp.player_id) continue;
       const player = playerOf(mp);
       if (!player) continue;
+      const mpQwirkles = qwirklesByMatchPlayer.get(mp.id) ?? 0;
       const existing = leaderMap.get(mp.player_id) ?? {
         playerId: mp.player_id,
         name: player.name,
@@ -351,9 +245,10 @@ export default async function GameStatsPage({
       existing.played += 1;
       existing.wins += mp.is_winner ? 1 : 0;
       existing.totalScore += mp.final_score ?? 0;
-      existing.totalQwirkles += qwirklesByMatchPlayer.get(mp.id) ?? 0;
+      existing.totalQwirkles += mpQwirkles;
       leaderMap.set(mp.player_id, existing);
       personalScores.push({ playerId: mp.player_id, matchId: m.id, score: mp.final_score ?? 0 });
+      if (isQwirkle) personalQwirkles.push({ playerId: mp.player_id, matchId: m.id, qwirkles: mpQwirkles });
     }
   }
   const leaderboard = [...leaderMap.values()].sort((a, b) => b.wins - a.wins || b.played - a.played);
@@ -406,20 +301,38 @@ export default async function GameStatsPage({
   // ensemble du classement global : il apporte une vraie info en plus.
   const showHeadToHeads = !(leaderboard.length === 2 && headToHeads.length === 1);
 
-  // Filtre partagé par les 3 tops ci-dessous, via ?player=<id> (liens,
-  // pas de JS client nécessaire — cohérent avec le reste, tout en server).
-  const filteredMatches = selectedPlayerId
-    ? matchSummaries.filter((m) => m.playerIds.includes(selectedPlayerId))
-    : matchSummaries;
-  const topByTotal = [...filteredMatches].sort((a, b) => b.total - a.total).slice(0, 5);
-  const topByQwirkles = isQwirkle
-    ? [...filteredMatches].sort((a, b) => b.qwirkles - a.qwirkles).slice(0, 5)
-    : [];
-  const filteredPersonalScores = selectedPlayerId
-    ? personalScores.filter((s) => s.playerId === selectedPlayerId)
-    : personalScores;
-  const topPersonalScores = [...filteredPersonalScores].sort((a, b) => b.score - a.score).slice(0, 5);
   const nameByPlayerId = new Map(leaderboard.map((p) => [p.playerId, p.name]));
+  const selectedName = selectedPlayerId ? nameByPlayerId.get(selectedPlayerId) : undefined;
+
+  // "Tous" sélectionné : classement des PARTIES par cumul des deux scores.
+  // Un joueur précis sélectionné : classement de SES scores individuels
+  // (change complètement de sens plutôt que de juste filtrer la même
+  // liste — deux questions différentes : "la meilleure partie" vs "mon
+  // meilleur score").
+  type TopEntry = { id: string; label: string; value: number };
+  const topScores: TopEntry[] = selectedPlayerId
+    ? personalScores
+        .filter((s) => s.playerId === selectedPlayerId)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map((s) => ({ id: s.matchId, label: selectedName ?? "?", value: s.score }))
+    : [...matchSummaries]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5)
+        .map((m) => ({ id: m.id, label: m.names, value: m.total }));
+
+  const topQwirkles: TopEntry[] = !isQwirkle
+    ? []
+    : selectedPlayerId
+      ? personalQwirkles
+          .filter((s) => s.playerId === selectedPlayerId)
+          .sort((a, b) => b.qwirkles - a.qwirkles)
+          .slice(0, 5)
+          .map((s) => ({ id: s.matchId, label: selectedName ?? "?", value: s.qwirkles }))
+      : [...matchSummaries]
+          .sort((a, b) => b.qwirkles - a.qwirkles)
+          .slice(0, 5)
+          .map((m) => ({ id: m.id, label: m.names, value: m.qwirkles }));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-8 px-6 py-10">
@@ -440,33 +353,31 @@ export default async function GameStatsPage({
       {leaderboard.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Classement</h2>
-          <LeaderboardDonut players={leaderboard} showQwirkles={isQwirkle} />
+          <DonutWithLegend
+            title="Répartition des victoires"
+            players={leaderboard.map((p) => ({ key: p.playerId, name: p.name, avatarColor: p.avatarColor, wins: p.wins }))}
+          />
+          <div className="flex flex-col gap-2">
+            {leaderboard.map((p) => (
+              <LeaderCard key={p.playerId} player={p} showQwirkles={isQwirkle} />
+            ))}
+          </div>
         </section>
       )}
 
       {showHeadToHeads && headToHeads.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Face à face</h2>
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-col gap-3">
             {headToHeads.map((h2h) => (
-              <div key={h2h.key} className="card flex flex-col items-center gap-3 py-4">
-                <HeadToHeadDonut playerA={h2h.playerA} playerB={h2h.playerB} totalGames={h2h.totalGames} />
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center gap-1">
-                    <AvatarBadge color={h2h.playerA.avatarColor} shape={h2h.playerA.avatarShape} size={28} />
-                    <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">
-                      {h2h.playerA.name}
-                    </span>
-                  </div>
-                  <span className="font-quicksand text-xs text-[#999]">vs</span>
-                  <div className="flex flex-col items-center gap-1">
-                    <AvatarBadge color={h2h.playerB.avatarColor} shape={h2h.playerB.avatarShape} size={28} />
-                    <span className="font-quicksand text-xs font-semibold text-onjoo-green-900">
-                      {h2h.playerB.name}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <DonutWithLegend
+                key={h2h.key}
+                title={`${h2h.playerA.name} vs ${h2h.playerB.name}`}
+                players={[
+                  { key: h2h.playerA.playerId, name: h2h.playerA.name, avatarColor: h2h.playerA.avatarColor, wins: h2h.playerA.wins },
+                  { key: h2h.playerB.playerId, name: h2h.playerB.name, avatarColor: h2h.playerB.avatarColor, wins: h2h.playerB.wins },
+                ]}
+              />
             ))}
           </div>
         </section>
@@ -480,56 +391,35 @@ export default async function GameStatsPage({
         />
       )}
 
-      {topPersonalScores.length > 0 && (
+      {topScores.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">Top 5 — meilleurs scores</h2>
+          <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">
+            Top 5 — {selectedPlayerId ? `meilleurs scores de ${selectedName}` : "score total de la partie"}
+          </h2>
           <div className="flex flex-col gap-2">
-            {topPersonalScores.map((s, i) => (
-              <Link key={`${s.matchId}-${s.playerId}`} href={`/matches/${s.matchId}`} className="card flex items-center gap-3 py-2.5">
+            {topScores.map((entry, i) => (
+              <Link key={`${entry.id}-${i}`} href={`/matches/${entry.id}`} className="card flex items-center gap-3 py-2.5">
                 <span className="w-6 text-center font-fredoka text-sm font-bold text-[#999]">{i + 1}</span>
-                <span className="flex-1 font-quicksand text-sm text-onjoo-green-900">
-                  {nameByPlayerId.get(s.playerId) ?? "?"}
-                </span>
-                <span className="badge">{s.score} pts</span>
+                <span className="flex-1 font-quicksand text-sm text-onjoo-green-900">{entry.label}</span>
+                <span className="badge">{entry.value} pts</span>
               </Link>
             ))}
           </div>
         </section>
       )}
 
-      {topByTotal.length > 0 && (
+      {topQwirkles.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">
-            Top 5 — score total de la partie
+            Top 5 — {selectedPlayerId ? `Qwirkles de ${selectedName}` : "Qwirkles de la partie"}
           </h2>
           <div className="flex flex-col gap-2">
-            {topByTotal.map((m, i) => (
-              <Link key={m.id} href={`/matches/${m.id}`} className="card flex items-center gap-3 py-2.5">
-                <span className="w-6 text-center font-fredoka text-sm font-bold text-[#999]">
-                  {i + 1}
-                </span>
-                <span className="flex-1 font-quicksand text-sm text-onjoo-green-900">{m.names}</span>
-                <span className="badge">{m.total} pts</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {topByQwirkles.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="font-fredoka text-lg font-bold text-onjoo-green-900">
-            Top 5 — Qwirkles de la partie
-          </h2>
-          <div className="flex flex-col gap-2">
-            {topByQwirkles.map((m, i) => (
-              <Link key={m.id} href={`/matches/${m.id}`} className="card flex items-center gap-3 py-2.5">
-                <span className="w-6 text-center font-fredoka text-sm font-bold text-[#999]">
-                  {i + 1}
-                </span>
-                <span className="flex-1 font-quicksand text-sm text-onjoo-green-900">{m.names}</span>
+            {topQwirkles.map((entry, i) => (
+              <Link key={`${entry.id}-${i}`} href={`/matches/${entry.id}`} className="card flex items-center gap-3 py-2.5">
+                <span className="w-6 text-center font-fredoka text-sm font-bold text-[#999]">{i + 1}</span>
+                <span className="flex-1 font-quicksand text-sm text-onjoo-green-900">{entry.label}</span>
                 <span className="badge">
-                  {m.qwirkles} Qwirkle{m.qwirkles > 1 ? "s" : ""}
+                  {entry.value} Qwirkle{entry.value > 1 ? "s" : ""}
                 </span>
               </Link>
             ))}

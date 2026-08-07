@@ -8,6 +8,7 @@ export type ActiveLeague = {
   id: string;
   name: string;
   invite_token: string;
+  join_code: string;
 };
 
 type MembershipRow = {
@@ -36,7 +37,7 @@ export const getActiveLeague = cache(async (): Promise<ActiveLeague | null> => {
   if (cookieLeagueId) {
     const { data } = await supabase
       .from("leagues")
-      .select("id, name, invite_token")
+      .select("id, name, invite_token, join_code")
       .eq("id", cookieLeagueId)
       .maybeSingle();
     if (data) return data;
@@ -52,7 +53,7 @@ export const getActiveLeague = cache(async (): Promise<ActiveLeague | null> => {
   // au lieu d'une ligne par adhésion de CE compte.
   const { data: memberships } = await supabase
     .from("league_members")
-    .select("league_id, leagues(id, name, invite_token)")
+    .select("league_id, leagues(id, name, invite_token, join_code)")
     .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .returns<MembershipRow[]>();
@@ -71,7 +72,7 @@ export const getMyLeagues = cache(async (): Promise<ActiveLeague[]> => {
 
   const { data: memberships } = await supabase
     .from("league_members")
-    .select("league_id, leagues(id, name, invite_token)")
+    .select("league_id, leagues(id, name, invite_token, join_code)")
     .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .returns<MembershipRow[]>();

@@ -5,8 +5,7 @@ import { getActiveLeague } from "@/lib/league";
 import { InviteLink } from "@/components/InviteLink";
 import { PlayerRow } from "@/components/PlayerRow";
 import { AddExistingPlayer } from "@/components/AddExistingPlayer";
-import { SubmitButton } from "@/components/SubmitButton";
-import { addPlayer } from "./actions";
+import { AddPlayerForm } from "@/components/AddPlayerForm";
 
 export default async function PlayersPage() {
   const league = await getActiveLeague();
@@ -86,19 +85,7 @@ export default async function PlayersPage() {
           Ajouter un joueur
         </h2>
 
-        <form action={addPlayer} className="card flex flex-col gap-3">
-          <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
-            Créer un profil invité
-          </h3>
-          <p className="font-quicksand text-xs text-[#777]">
-            Sans compte, mais avec un vrai historique : ses parties et ses
-            stats sont suivies comme pour n&apos;importe qui d&apos;autre.
-          </p>
-          <input name="name" required placeholder="Nom" className="input-field" />
-          <SubmitButton pendingText="..." className="btn-secondary">
-            Créer
-          </SubmitButton>
-        </form>
+        <AddPlayerForm />
 
         <div className="card flex flex-col gap-3">
           <h3 className="font-fredoka text-base font-semibold text-onjoo-green-900">
@@ -108,6 +95,12 @@ export default async function PlayersPage() {
             La personne rejoint elle-même la ligue avec son propre compte.
           </p>
           <InviteLink token={league.invite_token} />
+          <p className="font-quicksand text-xs text-[#777]">
+            Ou donne-lui simplement ce code à recopier dans son onglet Profil :
+          </p>
+          <div className="input-field text-center font-fredoka text-lg font-bold tracking-widest text-onjoo-green-900">
+            {league.join_code}
+          </div>
         </div>
 
         <AddExistingPlayer />

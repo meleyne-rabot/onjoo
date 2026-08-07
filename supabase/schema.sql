@@ -11,6 +11,10 @@ create table leagues (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   invite_token text not null unique default replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_'),
+  -- Code court à recopier à la main : alternative au lien d'invitation,
+  -- qui dépend de navigator.clipboard et échoue silencieusement pour
+  -- certains membres.
+  join_code text not null unique,
   created_at timestamptz not null default now(),
   created_by uuid not null references auth.users (id)
 );
@@ -173,6 +177,14 @@ create trigger on_league_created
 -- league_members. En SECURITY DEFINER, la fonction contourne cette
 -- dépendance et renvoie directement l'id.
 
+create function generate_league_join_code()
+returns text
+language sql
+volatile
+as $$
+  select upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
+$$;
+
 create function create_league(league_name text)
 returns uuid
 language plpgsql
@@ -181,9 +193,20 @@ set search_path = public
 as $$
 declare
   new_league_id uuid;
+  candidate text;
+  attempts int := 0;
 begin
-  insert into leagues (name, created_by)
-  values (league_name, auth.uid())
+  loop
+    candidate := generate_league_join_code();
+    attempts := attempts + 1;
+    exit when not exists (select 1 from leagues where join_code = candidate);
+    if attempts > 20 then
+      raise exception 'could_not_generate_join_code';
+    end if;
+  end loop;
+
+  insert into leagues (name, created_by, join_code)
+  values (league_name, auth.uid(), candidate)
   returning id into new_league_id;
 
   return new_league_id;
@@ -255,6 +278,33 @@ begin
 
   if target_league_id is null then
     raise exception 'invalid_invite_token';
+  end if;
+
+  insert into league_members (league_id, user_id, role)
+  values (target_league_id, auth.uid(), 'member')
+  on conflict (league_id, user_id) do nothing;
+
+  return target_league_id;
+end;
+$$;
+
+-- ============================================================
+-- RPC : rejoindre une ligue via son code court
+-- ============================================================
+
+create function join_league_by_code(code text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_league_id uuid;
+begin
+  select id into target_league_id from leagues where join_code = upper(trim(code));
+
+  if target_league_id is null then
+    raise exception 'invalid_join_code';
   end if;
 
   insert into league_members (league_id, user_id, role)

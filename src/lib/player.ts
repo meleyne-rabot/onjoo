@@ -64,16 +64,24 @@ export const getMyGlobalPlayer = cache(
   },
 );
 
-// Rattache un profil existant à une ligue — silencieux, idempotent (ex. on
-// rejoint une nouvelle ligue en ayant déjà un profil créé ailleurs).
-export async function attachPlayerToLeague(leagueId: string, playerId: string) {
+// Rattache un profil existant à une ligue — idempotent (ex. on rejoint une
+// nouvelle ligue en ayant déjà un profil créé ailleurs). Renvoie un message
+// d'erreur (au lieu de le passer sous silence) si le rattachement échoue :
+// sans ça, l'appelant redirige comme si tout s'était bien passé, et la
+// personne se retrouve bloquée à boucler sur /players/setup sans jamais
+// savoir pourquoi.
+export async function attachPlayerToLeague(
+  leagueId: string,
+  playerId: string,
+): Promise<string | null> {
   const supabase = await createClient();
-  await supabase
+  const { error } = await supabase
     .from("league_players")
     .upsert(
       { league_id: leagueId, player_id: playerId },
       { onConflict: "league_id,player_id", ignoreDuplicates: true },
     );
+  return error?.message ?? null;
 }
 
 // Couleurs/formes déjà prises dans une ligue — pour éviter d'assigner deux

@@ -6,7 +6,10 @@ import { getActiveLeague } from "@/lib/league";
 import { getMyPlayer, getMyGlobalPlayer, attachPlayerToLeague, getLeagueAvatars } from "@/lib/player";
 import { randomAvatar } from "@/lib/avatar";
 
-export async function createMyPlayer(formData: FormData) {
+export async function createMyPlayer(
+  _prevState: { error: string | null },
+  formData: FormData,
+): Promise<{ error: string | null }> {
   const name = String(formData.get("name") ?? "").trim();
 
   const league = await getActiveLeague();
@@ -27,15 +30,16 @@ export async function createMyPlayer(formData: FormData) {
   // on le rattache plutôt que d'en dupliquer un.
   const globalPlayer = await getMyGlobalPlayer();
   if (globalPlayer) {
-    await attachPlayerToLeague(league.id, globalPlayer.id);
+    const attachError = await attachPlayerToLeague(league.id, globalPlayer.id);
+    if (attachError) return { error: attachError };
     redirect("/games");
   }
 
-  if (!name) return;
+  if (!name) return { error: "Pseudo manquant." };
 
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
 
-  const { data: created } = await supabase
+  const { data: created, error: insertError } = await supabase
     .from("players")
     .insert({
       name,
@@ -47,9 +51,12 @@ export async function createMyPlayer(formData: FormData) {
     .select("id")
     .single();
 
-  if (created) {
-    await attachPlayerToLeague(league.id, created.id);
+  if (insertError || !created) {
+    return { error: insertError?.message ?? "Échec de la création du profil." };
   }
+
+  const attachError = await attachPlayerToLeague(league.id, created.id);
+  if (attachError) return { error: attachError };
 
   redirect("/games");
 }

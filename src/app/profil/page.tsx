@@ -5,6 +5,7 @@ import { getMyPlayer } from "@/lib/player";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { LeagueRow } from "@/components/LeagueRow";
+import { JoinLeagueByCode } from "@/components/JoinLeagueByCode";
 import { signOut } from "@/app/actions";
 
 export default async function ProfilPage() {
@@ -56,6 +57,8 @@ export default async function ProfilPage() {
           + Créer une nouvelle ligue
         </Link>
       </section>
+
+      <JoinLeagueByCode />
 
       <form action={signOut}>
         <button type="submit" className="btn-ghost w-full text-center">
