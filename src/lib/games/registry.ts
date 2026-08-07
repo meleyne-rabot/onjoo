@@ -14,6 +14,8 @@ import { MolkkyScoreScreen } from "./molkky/ScoreScreen";
 import * as molkkyCalc from "./molkky/calc";
 import { CornholeScoreScreen } from "./cornhole/ScoreScreen";
 import * as cornholeCalc from "./cornhole/calc";
+import { Le5ScoreScreen } from "./le_5/ScoreScreen";
+import * as le5Calc from "./le_5/calc";
 
 export const GAME_REGISTRY = {
   qwirkle: {
@@ -55,6 +57,11 @@ export const GAME_REGISTRY = {
     name: "Cornhole",
     ScoreScreen: CornholeScoreScreen,
     calc: cornholeCalc,
+  },
+  le_5: {
+    name: "Le 5",
+    ScoreScreen: Le5ScoreScreen,
+    calc: le5Calc,
   },
 } as const;
 

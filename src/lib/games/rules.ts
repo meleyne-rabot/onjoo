@@ -61,6 +61,17 @@ export const GAME_RULES: Record<string, string[]> = {
     "Score cible réglable en haut de l'écran (21 pts par défaut, variantes possibles en moins de points).",
     "Gagnant : le premier camp à atteindre ou dépasser le score cible.",
   ],
+  le_5: [
+    "But : avoir le score le plus BAS possible. De 2 joueurs à l'infini (à partir de 6, on mélange 2 jeux de cartes).",
+    "Le donneur (qui tourne à chaque manche) distribue entre 4 et 6 cartes par joueur, à sa convenance.",
+    "Valeur des cartes : Roi = -1, Valet/Dame = 10, autres cartes = valeur faciale. Pioche + une carte visible ; si la pioche est épuisée, on retourne la défausse sans la mélanger.",
+    "À ton tour : prends la carte visible ou pioche, puis défausse une carte de ta main (comme au Skyjo).",
+    "Combinaisons : paires, brelans, carrés, ou suites de 3 cartes de la même couleur.",
+    "Dès que ta main vaut 5 ou moins, tu peux \"poser\" pour terminer la manche. Si tu as vraiment la main la plus faible : tu marques ta main, plafonnée à 0 (donc négatif si tu as des rois). Sinon : ta main + 30 pts de malus.",
+    "Saisis directement ton score de manche déjà calculé, comme au Skyjo.",
+    "La partie s'arrête dès qu'un cumul dépasse strictement 150 pts. Un cumul tombant PILE à 150 redescend à 0 pour ce joueur, qui continue à jouer.",
+    "Gagnant : le score total le plus bas.",
+  ],
 };
 
 export function gameRules(code: string): string[] {
