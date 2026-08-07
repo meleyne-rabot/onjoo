@@ -21,23 +21,31 @@ type GameRow = {
   count: number;
 };
 
-function ToggleGameButton({
+// Petit switch vert/gris (façon iOS) plutôt qu'un gros bouton texte — reste
+// un <form>/<button> en dehors du <Link> (voir GameCard) pour ne jamais
+// imbriquer un élément interactif dans un <a>.
+function GameToggleSwitch({
   game,
   action,
-  label,
+  on,
 }: {
   game: GameRow;
   action: (formData: FormData) => void;
-  label: string;
+  on: boolean;
 }) {
   return (
-    <form action={action}>
+    <form action={action} className="shrink-0">
       <input type="hidden" name="game_code" value={game.code} />
       <button
         type="submit"
-        className="whitespace-nowrap rounded-full border-2 border-[#ddd] px-3 py-1.5 font-quicksand text-xs font-semibold text-[#777]"
+        aria-label={on ? `Désactiver ${game.name}` : `Réactiver ${game.name}`}
+        className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+        style={{ backgroundColor: on ? "#8A9A6E" : "#ddd" }}
       >
-        {label}
+        <span
+          className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left]"
+          style={{ left: on ? 22 : 2 }}
+        />
       </button>
     </form>
   );
@@ -49,20 +57,20 @@ function GameCard({
   subtitle,
   highlighted,
   disabled,
-  action,
+  toggle,
 }: {
   game: GameRow;
   href?: string;
   subtitle: React.ReactNode;
   highlighted?: boolean;
   disabled?: boolean;
-  action?: React.ReactNode;
+  toggle?: React.ReactNode;
 }) {
   const meta = gameMeta(game.code);
-  const content = (
+  const inner = (
     <>
       <GameIcon category={meta.category} />
-      <div className="flex flex-1 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
           className={`font-fredoka text-base font-semibold ${disabled ? "text-[#999]" : "text-onjoo-green-900"}`}
         >
@@ -70,41 +78,36 @@ function GameCard({
         </span>
         {subtitle}
       </div>
-      {game.logo_url && (
-        // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
-        <img
-          src={game.logo_url}
-          alt=""
-          className="h-11 w-[72px] shrink-0 rounded-[10px] bg-[#FAF1DE] object-contain p-1"
-        />
-      )}
     </>
   );
 
-  const card =
-    disabled || !href ? (
-      <div className={`card flex items-center gap-4 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
-        {content}
-      </div>
-    ) : (
-      <Link
-        href={href}
-        className="card flex items-center gap-4"
-        style={highlighted ? { borderColor: "#163D2E", borderWidth: 2 } : undefined}
-      >
-        {content}
-      </Link>
-    );
+  const clickable = !disabled && href;
 
-  if (!action) return card;
-
-  // L'action (désactiver/réactiver) est un sibling du Link, jamais imbriquée
-  // dedans — un <button>/<form> à l'intérieur d'un <a> est invalide en HTML
-  // et casse le clic sur la carte.
   return (
-    <div className="flex items-center gap-2">
-      <div className="min-w-0 flex-1">{card}</div>
-      {action}
+    <div
+      className={`card flex items-center gap-4 ${disabled ? "opacity-50" : ""}`}
+      style={highlighted ? { borderColor: "#163D2E", borderWidth: 2 } : undefined}
+    >
+      {clickable ? (
+        <Link href={href} className="flex min-w-0 flex-1 items-center gap-4">
+          {inner}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-4">{inner}</div>
+      )}
+      {(game.logo_url || toggle) && (
+        <div className="flex shrink-0 flex-col items-center gap-1.5">
+          {game.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element -- logos externes/uploadés, domaines non connus à l'avance
+            <img
+              src={game.logo_url}
+              alt=""
+              className="h-11 w-[72px] rounded-[10px] bg-[#FAF1DE] object-contain p-1"
+            />
+          )}
+          {toggle}
+        </div>
+      )}
     </div>
   );
 }
@@ -271,9 +274,7 @@ export default async function GamesPage() {
                       {`${game.count} partie${game.count > 1 ? "s" : ""} jouée${game.count > 1 ? "s" : ""}`}
                     </span>
                   }
-                  action={
-                    <ToggleGameButton game={game} action={disableGameForLeague} label="Désactiver" />
-                  }
+                  toggle={<GameToggleSwitch game={game} action={disableGameForLeague} on />}
                 />
               ) : (
                 <GameCard
@@ -301,7 +302,7 @@ export default async function GamesPage() {
               game={game}
               disabled
               subtitle={<span className="font-quicksand text-sm text-[#777]">Désactivé pour cette ligue</span>}
-              action={<ToggleGameButton game={game} action={enableGameForLeague} label="Réactiver" />}
+              toggle={<GameToggleSwitch game={game} action={enableGameForLeague} on={false} />}
             />
           ))}
         </div>
