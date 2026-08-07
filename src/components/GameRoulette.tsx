@@ -65,7 +65,7 @@ export function GameRoulette({ games }: { games: RouletteGame[] }) {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="btn-secondary text-center">
-        🎡 Je ne sais pas quoi jouer
+        🎡 Choisis pour nous
       </button>
 
       {open && (
