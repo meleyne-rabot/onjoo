@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
+import { ColumnOrderArrows } from "@/components/ColumnOrderArrows";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
+import { useColumnOrder } from "@/hooks/useColumnOrder";
 import {
   CATEGORIES,
   categoryOptions,
@@ -73,6 +75,8 @@ export function YamsScoreScreen({
   }
 
   const participantIds = useMemo(() => participants.map((p) => p.id), [participants]);
+
+  const { orderedParticipants, moveColumn } = useColumnOrder(participants, supabase, startTransition);
 
   useEffect(() => {
     const channel = supabase
@@ -220,8 +224,16 @@ export function YamsScoreScreen({
         <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
           <div className="grid" style={{ gridTemplateColumns }}>
             <div />
-            {participants.map((participant) => (
+            {orderedParticipants.map((participant, index) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
+                {!isCompleted && (
+                  <ColumnOrderArrows
+                    name={participant.name}
+                    index={index}
+                    count={orderedParticipants.length}
+                    onMove={(direction) => moveColumn(participant.id, direction)}
+                  />
+                )}
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={28} />
                 <span className="truncate font-quicksand text-xs font-bold text-onjoo-green-900">
                   {participant.name}
@@ -238,7 +250,7 @@ export function YamsScoreScreen({
                 key={category.id}
                 category={category}
                 disabled={isCompleted}
-                participants={participants}
+                participants={orderedParticipants}
                 rounds={rounds}
                 openCell={openCell}
                 setOpenCell={setOpenCell}
@@ -247,13 +259,13 @@ export function YamsScoreScreen({
                 onFocusCell={setEditingCell}
               />
             ))}
-            <SubtotalRows rounds={rounds} participants={participants} />
+            <SubtotalRows rounds={rounds} participants={orderedParticipants} />
             {CATEGORIES.filter((c) => c.section === "lower").map((category) => (
               <CategoryRow
                 key={category.id}
                 category={category}
                 disabled={isCompleted}
-                participants={participants}
+                participants={orderedParticipants}
                 rounds={rounds}
                 openCell={openCell}
                 setOpenCell={setOpenCell}
@@ -273,7 +285,7 @@ export function YamsScoreScreen({
             <div className="flex items-center px-2 py-2.5 font-fredoka text-sm font-bold text-white">
               Total
             </div>
-            {participants.map((participant) => (
+            {orderedParticipants.map((participant) => (
               <div
                 key={participant.id}
                 className="flex items-center justify-center px-1 py-2.5 font-fredoka text-lg font-bold text-white"

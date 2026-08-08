@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
+import { ColumnOrderArrows } from "@/components/ColumnOrderArrows";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   bidOrderForRound,
@@ -163,6 +164,26 @@ export function AscenseurScoreScreen({
   const winners = isCompleted ? determineWinners(totals) : [];
   const winnerPoints = winners.length > 0 ? totals[winners[0]] ?? 0 : 0;
   const lastRoundIndex = rounds.length > 0 ? Math.max(...rounds.map((r) => r.round_index)) : null;
+
+  // Réutilise turnOrderIds/turnOrderSet (déjà la source de vérité pour
+  // l'ordre d'annonce, cf. pickStarter) plutôt qu'un état indépendant :
+  // déplacer une colonne EST une façon d'ajuster l'ordre de jeu ici, pas
+  // juste un réarrangement visuel comme dans les autres jeux.
+  function moveColumn(id: string, direction: -1 | 1) {
+    const base = orderedParticipants.map((p) => p.id);
+    const index = base.indexOf(id);
+    const target = index + direction;
+    if (target < 0 || target >= base.length) return;
+    const next = [...base];
+    [next[index], next[target]] = [next[target], next[index]];
+    setTurnOrderIds(next);
+    setTurnOrderSet(true);
+    startTransition(async () => {
+      await Promise.all(
+        next.map((pid, i) => supabase.from("match_players").update({ turn_order: i }).eq("id", pid)),
+      );
+    });
+  }
 
   function pickStarter(starterId: string) {
     const baseOrder = orderedParticipants.map((p) => p.id);
@@ -365,8 +386,16 @@ export function AscenseurScoreScreen({
         <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
           <div className="grid" style={{ gridTemplateColumns }}>
             <div />
-            {orderedParticipants.map((participant) => (
+            {orderedParticipants.map((participant, index) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
+                {!isCompleted && (
+                  <ColumnOrderArrows
+                    name={participant.name}
+                    index={index}
+                    count={orderedParticipants.length}
+                    onMove={(direction) => moveColumn(participant.id, direction)}
+                  />
+                )}
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={28} />
                 <span className="truncate font-quicksand text-xs font-bold text-onjoo-green-900">
                   {participant.name}

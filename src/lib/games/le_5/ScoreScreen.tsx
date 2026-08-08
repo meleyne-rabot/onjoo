@@ -7,7 +7,9 @@ import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
 import { LeaderboardButton } from "@/components/LeaderboardButton";
+import { ColumnOrderArrows } from "@/components/ColumnOrderArrows";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
+import { useColumnOrder } from "@/hooks/useColumnOrder";
 import {
   activeRoundIndex,
   cumulativeTotals,
@@ -71,6 +73,8 @@ export function Le5ScoreScreen({
     () => participants.map((p) => p.id),
     [participants],
   );
+
+  const { orderedParticipants, moveColumn } = useColumnOrder(participants, supabase, startTransition);
 
   useEffect(() => {
     const channel = supabase
@@ -209,7 +213,7 @@ export function Le5ScoreScreen({
           {!isCompleted && rounds.length > 0 && (
             <LeaderboardButton
               lowerIsBetter
-              entries={participants.map((p) => ({
+              entries={orderedParticipants.map((p) => ({
                 id: p.id,
                 name: p.name,
                 avatarColor: p.avatarColor,
@@ -261,8 +265,16 @@ export function Le5ScoreScreen({
             style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
           >
             <div />
-            {participants.map((participant) => (
+            {orderedParticipants.map((participant, index) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
+                {!isCompleted && (
+                  <ColumnOrderArrows
+                    name={participant.name}
+                    index={index}
+                    count={orderedParticipants.length}
+                    onMove={(direction) => moveColumn(participant.id, direction)}
+                  />
+                )}
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
                 <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
                   {participant.name}
@@ -283,7 +295,7 @@ export function Le5ScoreScreen({
                 roundIndex={roundIndex}
                 isActive={!isCompleted && roundIndex === activeRound}
                 disabled={isCompleted}
-                participants={participants}
+                participants={orderedParticipants}
                 rounds={rounds}
                 onSave={saveCell}
                 editorsByCell={editorsByCell}
@@ -301,7 +313,7 @@ export function Le5ScoreScreen({
             <div className="flex items-center justify-center px-1 py-2.5 font-fredoka text-sm font-bold text-onjoo-green-900">
               Total
             </div>
-            {participants.map((participant) => (
+            {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center justify-center gap-0.5 px-1 py-2.5">
                 <span className="font-fredoka text-lg font-bold text-onjoo-green-900">
                   {totals[participant.id] ?? 0}
