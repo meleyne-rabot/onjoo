@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
-import { ColumnOrderArrows } from "@/components/ColumnOrderArrows";
+import { PlayerOrderButton } from "@/components/PlayerOrderButton";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { useColumnOrder } from "@/hooks/useColumnOrder";
 import {
@@ -76,7 +76,7 @@ export function YamsScoreScreen({
 
   const participantIds = useMemo(() => participants.map((p) => p.id), [participants]);
 
-  const { orderedParticipants, moveColumn } = useColumnOrder(participants, supabase, startTransition);
+  const { orderedParticipants, reorder } = useColumnOrder(participants, supabase, startTransition);
 
   useEffect(() => {
     const channel = supabase
@@ -196,6 +196,9 @@ export function YamsScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="yams" gameName="Yam's" />
           <RefreshButton />
+          {!isCompleted && (
+            <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
+          )}
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yam&apos;s</h1>
             {!isCompleted && (
@@ -224,16 +227,8 @@ export function YamsScoreScreen({
         <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
           <div className="grid" style={{ gridTemplateColumns }}>
             <div />
-            {orderedParticipants.map((participant, index) => (
+            {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
-                {!isCompleted && (
-                  <ColumnOrderArrows
-                    name={participant.name}
-                    index={index}
-                    count={orderedParticipants.length}
-                    onMove={(direction) => moveColumn(participant.id, direction)}
-                  />
-                )}
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={28} />
                 <span className="truncate font-quicksand text-xs font-bold text-onjoo-green-900">
                   {participant.name}

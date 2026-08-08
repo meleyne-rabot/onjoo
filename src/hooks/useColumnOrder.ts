@@ -5,13 +5,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Identified = { id: string };
 
-// Ordre d'affichage des colonnes joueurs, modifiable via des flèches ◀▶
+// Ordre d'affichage des colonnes joueurs, modifiable via le popup
+// "Ordre des joueurs" (glisser-déposer vertical, cf. PlayerOrderButton)
 // pour refléter la place de chacun autour de la table — persisté sur
 // match_players.turn_order (déjà la colonne utilisée pour trier les
-// participants au chargement de la page, cf. matches/[id]/page.tsx),
-// donc stable après rechargement. Indépendant de l'ordre "de calcul" des
-// scores, qui n'est jamais affecté par cette réorganisation purement
-// visuelle.
+// participants au chargement de la page, cf. matches/[id]/page.tsx).
 export function useColumnOrder<T extends Identified>(
   participants: T[],
   supabase: SupabaseClient,
@@ -27,12 +25,7 @@ export function useColumnOrder<T extends Identified>(
     [order, participants],
   );
 
-  function moveColumn(id: string, direction: -1 | 1) {
-    const index = order.indexOf(id);
-    const target = index + direction;
-    if (target < 0 || target >= order.length) return;
-    const next = [...order];
-    [next[index], next[target]] = [next[target], next[index]];
+  function reorder(next: string[]) {
     setOrder(next);
     startTransition(async () => {
       await Promise.all(
@@ -41,5 +34,5 @@ export function useColumnOrder<T extends Identified>(
     });
   }
 
-  return { orderedParticipants, moveColumn };
+  return { orderedParticipants, reorder };
 }

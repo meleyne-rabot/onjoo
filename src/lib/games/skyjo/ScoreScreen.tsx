@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
-import { ColumnOrderArrows } from "@/components/ColumnOrderArrows";
+import { PlayerOrderButton } from "@/components/PlayerOrderButton";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { useColumnOrder } from "@/hooks/useColumnOrder";
 import {
@@ -73,7 +73,7 @@ export function SkyjoScoreScreen({
     [participants],
   );
 
-  const { orderedParticipants, moveColumn } = useColumnOrder(participants, supabase, startTransition);
+  const { orderedParticipants, reorder } = useColumnOrder(participants, supabase, startTransition);
 
   useEffect(() => {
     const channel = supabase
@@ -209,6 +209,9 @@ export function SkyjoScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="skyjo" gameName="Skyjo" />
           <RefreshButton />
+          {!isCompleted && (
+            <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
+          )}
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Skyjo</h1>
             {!isCompleted && (
@@ -252,16 +255,8 @@ export function SkyjoScoreScreen({
             style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
           >
             <div />
-            {orderedParticipants.map((participant, index) => (
+            {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
-                {!isCompleted && (
-                  <ColumnOrderArrows
-                    name={participant.name}
-                    index={index}
-                    count={orderedParticipants.length}
-                    onMove={(direction) => moveColumn(participant.id, direction)}
-                  />
-                )}
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
                 <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
                   {participant.name}
