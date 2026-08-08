@@ -10,10 +10,13 @@ type Entry = { id: string; name: string; avatarColor: string; avatarShape: strin
 // Ligne d'un joueur dans le popup, glissable verticalement pour réordonner
 // (poignée = toute la ligne). Pointer Events plutôt que le drag-and-drop
 // HTML natif : bien plus fiable au toucher pour ce genre de geste.
+//
+// Le transform pendant le drag est écrit directement sur le DOM via la ref
+// (pas de state React) : sinon chaque pixel de mouvement re-render toute
+// la liste des joueurs, ce qui rendait le geste saccadé.
 function DraggableRow({
   id,
   dragId,
-  dragDeltaY,
   onBeginDrag,
   onUpdateDrag,
   onEndDrag,
@@ -21,9 +24,8 @@ function DraggableRow({
 }: {
   id: string;
   dragId: string | null;
-  dragDeltaY: number;
   onBeginDrag: (id: string, clientY: number, heightPx: number) => void;
-  onUpdateDrag: (id: string, clientY: number) => void;
+  onUpdateDrag: (id: string, clientY: number) => number;
   onEndDrag: (id: string) => void;
   children: React.ReactNode;
 }) {
@@ -38,14 +40,22 @@ function DraggableRow({
         onBeginDrag(id, event.clientY, height);
         (event.currentTarget as Element).setPointerCapture(event.pointerId);
       }}
-      onPointerMove={(event) => onUpdateDrag(id, event.clientY)}
-      onPointerUp={() => onEndDrag(id)}
-      onPointerCancel={() => onEndDrag(id)}
+      onPointerMove={(event) => {
+        const delta = onUpdateDrag(id, event.clientY);
+        if (ref.current) ref.current.style.transform = `translateY(${delta}px)`;
+      }}
+      onPointerUp={() => {
+        onEndDrag(id);
+        if (ref.current) ref.current.style.transform = "";
+      }}
+      onPointerCancel={() => {
+        onEndDrag(id);
+        if (ref.current) ref.current.style.transform = "";
+      }}
       className="flex items-center gap-3 rounded-xl border border-[#eee] bg-white px-3 py-2.5"
       style={{
         touchAction: "none",
         cursor: isDragging ? "grabbing" : "grab",
-        transform: isDragging ? `translateY(${dragDeltaY}px)` : undefined,
         position: isDragging ? "relative" : undefined,
         zIndex: isDragging ? 10 : undefined,
         boxShadow: isDragging ? "0 6px 16px rgba(0,0,0,0.15)" : undefined,
@@ -66,10 +76,7 @@ function PlayerOrderModal({
   onReorder: (next: string[]) => void;
 }) {
   const baseOrder = participants.map((p) => p.id);
-  const { liveOrder, dragId, dragDeltaX: dragDeltaY, beginDrag, updateDrag, endDrag } = useDragReorder(
-    baseOrder,
-    onReorder,
-  );
+  const { liveOrder, dragId, beginDrag, updateDrag, endDrag } = useDragReorder(baseOrder, onReorder);
   const ordered = liveOrder
     .map((id) => participants.find((p) => p.id === id))
     .filter((p): p is Entry => Boolean(p));
@@ -103,7 +110,6 @@ function PlayerOrderModal({
               key={p.id}
               id={p.id}
               dragId={dragId}
-              dragDeltaY={dragDeltaY}
               onBeginDrag={beginDrag}
               onUpdateDrag={updateDrag}
               onEndDrag={endDrag}
