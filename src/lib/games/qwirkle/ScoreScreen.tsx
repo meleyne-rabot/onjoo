@@ -7,6 +7,7 @@ import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
 import { PlayerOrderButton } from "@/components/PlayerOrderButton";
+import { LeaderboardButton } from "@/components/LeaderboardButton";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   activeRoundIndex,
@@ -331,6 +332,17 @@ export function QwirkleScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="qwirkle" gameName="Qwirkle" />
           <RefreshButton />
+          {!isCompleted && rounds.length > 0 && (
+            <LeaderboardButton
+              entries={orderedParticipants.map((p) => ({
+                id: p.id,
+                name: p.name,
+                avatarColor: p.avatarColor,
+                avatarShape: p.avatarShape,
+                score: displayTotals[p.id] ?? 0,
+              }))}
+            />
+          )}
           <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
         </div>
         <div className="flex items-center gap-2">

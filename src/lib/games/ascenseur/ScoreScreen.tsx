@@ -7,6 +7,7 @@ import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
 import { PlayerOrderButton } from "@/components/PlayerOrderButton";
+import { LeaderboardButton } from "@/components/LeaderboardButton";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   bidOrderForRound,
@@ -318,6 +319,17 @@ export function AscenseurScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="ascenseur" gameName="Ascenseur" />
           <RefreshButton />
+          {!isCompleted && rounds.length > 0 && (
+            <LeaderboardButton
+              entries={orderedParticipants.map((p) => ({
+                id: p.id,
+                name: p.name,
+                avatarColor: p.avatarColor,
+                avatarShape: p.avatarShape,
+                score: totals[p.id] ?? 0,
+              }))}
+            />
+          )}
           <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Ascenseur</h1>
         </div>
         <div className="flex items-center gap-2">

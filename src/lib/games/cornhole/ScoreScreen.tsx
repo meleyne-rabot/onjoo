@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
+import { LeaderboardButton } from "@/components/LeaderboardButton";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   activeRoundIndex,
@@ -274,6 +275,17 @@ export function CornholeScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="cornhole" gameName="Cornhole" />
           <RefreshButton />
+          {!isCompleted && rounds.length > 0 && (
+            <LeaderboardButton
+              entries={sideViews.map((side, index) => ({
+                id: `side-${index}`,
+                name: side.members.map((p) => p.name).join(" & "),
+                avatarColor: side.members[0]?.avatarColor ?? "#999",
+                avatarShape: side.members[0]?.avatarShape ?? "circle",
+                score: totals[index],
+              }))}
+            />
+          )}
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Cornhole</h1>
             {!isCompleted && (
