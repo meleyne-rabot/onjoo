@@ -91,7 +91,7 @@ export default async function GamesPage() {
       .select("code, name, active, logo_url")
       .order("active", { ascending: false })
       .order("name", { ascending: true }),
-    supabase.from("matches").select("game_code, status, created_at").eq("league_id", league.id),
+    supabase.from("matches").select("id, game_code, status, created_at").eq("league_id", league.id),
     supabase.from("league_games_disabled").select("game_code").eq("league_id", league.id),
   ]);
 
@@ -101,10 +101,17 @@ export default async function GamesPage() {
 
   const matchCounts = new Map<string, number>();
   const inProgressCodes = new Set<string>();
+  // Un seul match en cours affiché par jeu (cf. inProgressGames plus bas,
+  // dédupliqué par code) — s'il y en avait deux en parallèle, on ne peut
+  // de toute façon lier que vers l'un des deux.
+  const inProgressMatchId = new Map<string, string>();
   const lastPlayedAt = new Map<string, string>();
   for (const match of matchesResult.data ?? []) {
     matchCounts.set(match.game_code, (matchCounts.get(match.game_code) ?? 0) + 1);
-    if (match.status === "in_progress") inProgressCodes.add(match.game_code);
+    if (match.status === "in_progress") {
+      inProgressCodes.add(match.game_code);
+      inProgressMatchId.set(match.game_code, match.id);
+    }
     const previous = lastPlayedAt.get(match.game_code);
     if (!previous || match.created_at > previous) lastPlayedAt.set(match.game_code, match.created_at);
   }
@@ -179,7 +186,11 @@ export default async function GamesPage() {
             <GameCard
               key={game.code}
               game={game}
-              href={`/games/${game.code}`}
+              href={
+                inProgressMatchId.has(game.code)
+                  ? `/matches/${inProgressMatchId.get(game.code)}`
+                  : `/games/${game.code}`
+              }
               highlighted
               subtitle={
                 <span className="flex items-center gap-1.5 font-quicksand text-sm font-semibold text-onjoo-green-900">
