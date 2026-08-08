@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { useDragReorder } from "@/hooks/useDragReorder";
 
@@ -73,7 +74,7 @@ function PlayerOrderModal({
     .map((id) => participants.find((p) => p.id === id))
     .filter((p): p is Entry => Boolean(p));
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
       onClick={onClose}
@@ -119,7 +120,8 @@ function PlayerOrderModal({
           Terminé
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
