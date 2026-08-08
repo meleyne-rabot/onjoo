@@ -196,17 +196,7 @@ export function YamsScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="yams" gameName="Yam's" />
           <RefreshButton />
-          {!isCompleted && (
-            <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
-          )}
-          <div>
-            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yam&apos;s</h1>
-            {!isCompleted && (
-              <p className="font-quicksand text-sm text-[#777]">
-                Tape une case pour choisir ton score.
-              </p>
-            )}
-          </div>
+          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Yam&apos;s</h1>
         </div>
         <div className="flex items-center gap-2">
           {others.length > 0 && (
@@ -223,10 +213,18 @@ export function YamsScoreScreen({
         </div>
       </div>
 
+      {!isCompleted && (
+        <p className="font-quicksand text-sm text-[#777]">Tape une case pour choisir ton score.</p>
+      )}
+
       <div className="rounded-xl border border-[#eee]">
         <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
           <div className="grid" style={{ gridTemplateColumns }}>
-            <div />
+            <div className="flex items-center justify-center px-1 py-2.5">
+              {!isCompleted && (
+                <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
+              )}
+            </div>
             {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={28} />

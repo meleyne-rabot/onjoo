@@ -331,17 +331,7 @@ export function QwirkleScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="qwirkle" gameName="Qwirkle" />
           <RefreshButton />
-          {!isCompleted && (
-            <PlayerOrderButton participants={orderedParticipants} onReorder={reorderColumns} />
-          )}
-          <div>
-            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
-            {!isCompleted && (
-              <p className="font-quicksand text-sm text-[#777]">
-                Un tour se sauvegarde tout seul dès que tu saisis un score.
-              </p>
-            )}
-          </div>
+          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Qwirkle</h1>
         </div>
         <div className="flex items-center gap-2">
           {others.length > 0 && (
@@ -357,6 +347,12 @@ export function QwirkleScoreScreen({
           <span className="badge">Total partie : {matchTotal}</span>
         </div>
       </div>
+
+      {!isCompleted && (
+        <p className="font-quicksand text-sm text-[#777]">
+          Un tour se sauvegarde tout seul dès que tu saisis un score.
+        </p>
+      )}
 
       {!turnOrderSet && !isCompleted && (
         <div className="card flex flex-col gap-3">
@@ -384,7 +380,11 @@ export function QwirkleScoreScreen({
             className="grid"
             style={{ gridTemplateColumns, minWidth: 52 + orderedParticipants.length * 92 }}
           >
-            <div />
+            <div className="flex items-center justify-center px-1 py-2.5">
+              {!isCompleted && (
+                <PlayerOrderButton participants={orderedParticipants} onReorder={reorderColumns} />
+              )}
+            </div>
             {orderedParticipants.map((participant) => (
               <div
                 key={participant.id}

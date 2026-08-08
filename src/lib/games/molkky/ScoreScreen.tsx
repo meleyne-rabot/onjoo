@@ -200,17 +200,7 @@ export function MolkkyScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="molkky" gameName="Mölkky" />
           <RefreshButton />
-          {!isCompleted && (
-            <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
-          )}
-          <div>
-            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Mölkky</h1>
-            {!isCompleted && (
-              <p className="font-quicksand text-sm text-[#777]">
-                Un tour se sauvegarde tout seul dès que tu saisis un score.
-              </p>
-            )}
-          </div>
+          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Mölkky</h1>
         </div>
         <div className="flex items-center gap-2">
           {others.length > 0 && (
@@ -225,6 +215,12 @@ export function MolkkyScoreScreen({
           )}
         </div>
       </div>
+
+      {!isCompleted && (
+        <p className="font-quicksand text-sm text-[#777]">
+          Un tour se sauvegarde tout seul dès que tu saisis un score.
+        </p>
+      )}
 
       {reached50.length > 0 && (
         <div className="card flex items-center gap-2" style={{ borderColor: "#163D2E" }}>
@@ -242,7 +238,11 @@ export function MolkkyScoreScreen({
       <div className="rounded-xl border border-[#eee]">
         <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
           <div className="grid" style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}>
-            <div />
+            <div className="flex items-center justify-center px-1 py-2.5">
+              {!isCompleted && (
+                <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
+              )}
+            </div>
             {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />

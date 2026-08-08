@@ -218,17 +218,7 @@ export function UnoScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="uno" gameName="Uno" />
           <RefreshButton />
-          {!isCompleted && (
-            <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
-          )}
-          <div>
-            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Uno</h1>
-            {!isCompleted && (
-              <p className="font-quicksand text-sm text-[#777]">
-                Chacun tape ce qu&apos;il lui reste en main (0 pour qui a gagné le tour).
-              </p>
-            )}
-          </div>
+          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Uno</h1>
         </div>
         <div className="flex items-center gap-2">
           {others.length > 0 && (
@@ -244,6 +234,12 @@ export function UnoScoreScreen({
           <span className="badge">Total partie : {matchTotal}</span>
         </div>
       </div>
+
+      {!isCompleted && (
+        <p className="font-quicksand text-sm text-[#777]">
+          Chacun tape ce qu&apos;il lui reste en main (0 pour qui a gagné le tour).
+        </p>
+      )}
 
       {!isCompleted && (
         <div className="flex items-center gap-2">
@@ -278,7 +274,11 @@ export function UnoScoreScreen({
       <div className="rounded-xl border border-[#eee]">
         <div ref={headerScrollRef} className="sticky top-0 z-20 overflow-x-hidden rounded-t-xl bg-[#FAF1DE]">
           <div className="grid" style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}>
-            <div />
+            <div className="flex items-center justify-center px-1 py-2.5">
+              {!isCompleted && (
+                <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
+              )}
+            </div>
             {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />

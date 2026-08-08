@@ -140,9 +140,9 @@ export function PlayerOrderButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Réordonner les joueurs"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-[#ddd] text-lg"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-[#ddd] text-base text-[#777]"
       >
-        ⇅
+        ⇄
       </button>
       {open && (
         <PlayerOrderModal

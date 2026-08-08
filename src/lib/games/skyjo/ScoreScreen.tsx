@@ -209,17 +209,7 @@ export function SkyjoScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="skyjo" gameName="Skyjo" />
           <RefreshButton />
-          {!isCompleted && (
-            <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
-          )}
-          <div>
-            <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Skyjo</h1>
-            {!isCompleted && (
-              <p className="font-quicksand text-sm text-[#777]">
-                Un tour se sauvegarde tout seul dès que tu saisis un score.
-              </p>
-            )}
-          </div>
+          <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Skyjo</h1>
         </div>
         <div className="flex items-center gap-2">
           {others.length > 0 && (
@@ -234,6 +224,12 @@ export function SkyjoScoreScreen({
           )}
         </div>
       </div>
+
+      {!isCompleted && (
+        <p className="font-quicksand text-sm text-[#777]">
+          Un tour se sauvegarde tout seul dès que tu saisis un score.
+        </p>
+      )}
 
       {overTarget.length > 0 && (
         <div className="card flex items-center gap-2" style={{ borderColor: "#d64545" }}>
@@ -254,7 +250,11 @@ export function SkyjoScoreScreen({
             className="grid"
             style={{ gridTemplateColumns, minWidth: 52 + participants.length * 92 }}
           >
-            <div />
+            <div className="flex items-center justify-center px-1 py-2.5">
+              {!isCompleted && (
+                <PlayerOrderButton participants={orderedParticipants} onReorder={reorder} />
+              )}
+            </div>
             {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
                 <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
