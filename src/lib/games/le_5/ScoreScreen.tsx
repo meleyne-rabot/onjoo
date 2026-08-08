@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { RulesButton } from "@/components/RulesButton";
 import { RefreshButton } from "@/components/RefreshButton";
+import { LeaderboardButton } from "@/components/LeaderboardButton";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import {
   activeRoundIndex,
@@ -205,6 +206,18 @@ export function Le5ScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="le_5" gameName="Le 5" />
           <RefreshButton />
+          {!isCompleted && rounds.length > 0 && (
+            <LeaderboardButton
+              lowerIsBetter
+              entries={participants.map((p) => ({
+                id: p.id,
+                name: p.name,
+                avatarColor: p.avatarColor,
+                avatarShape: p.avatarShape,
+                score: totals[p.id] ?? 0,
+              }))}
+            />
+          )}
           <div>
             <h1 className="font-fredoka text-xl font-bold text-onjoo-green-900">Le 5</h1>
             {!isCompleted && (
