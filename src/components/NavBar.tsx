@@ -72,7 +72,12 @@ export async function NavBar() {
             </Link>
             <Link href="/profil" aria-label="Ton profil">
               {myPlayer ? (
-                <AvatarBadge color={myPlayer.avatar_color} shape={myPlayer.avatar_shape} size={32} />
+                <AvatarBadge
+                  color={myPlayer.avatar_color}
+                  shape={myPlayer.avatar_shape}
+                  avatarUrl={myPlayer.avatar_url}
+                  size={32}
+                />
               ) : (
                 <span className="font-quicksand text-xs font-semibold text-neutral-400">
                   Profil

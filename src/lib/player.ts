@@ -6,6 +6,7 @@ export type MyPlayer = {
   name: string;
   avatar_color: string;
   avatar_shape: string;
+  avatar_url: string | null;
 };
 
 type AvatarPair = { avatar_color: string; avatar_shape: string };
@@ -23,7 +24,7 @@ export const getMyPlayer = cache(
     const supabase = await createClient();
     const { data } = await supabase
       .from("players")
-      .select("id, name, avatar_color, avatar_shape, league_players!inner(league_id)")
+      .select("id, name, avatar_color, avatar_shape, avatar_url, league_players!inner(league_id)")
       .eq("linked_user_id", user.id)
       .eq("league_players.league_id", leagueId)
       .limit(1)
@@ -35,6 +36,7 @@ export const getMyPlayer = cache(
       name: data.name,
       avatar_color: data.avatar_color,
       avatar_shape: data.avatar_shape,
+      avatar_url: data.avatar_url,
     };
   },
 );
@@ -54,7 +56,7 @@ export const getMyGlobalPlayer = cache(
     // on prend la plus ancienne au lieu de faire planter la requête.
     const { data } = await supabase
       .from("players")
-      .select("id, name, avatar_color, avatar_shape")
+      .select("id, name, avatar_color, avatar_shape, avatar_url")
       .eq("linked_user_id", user.id)
       .order("created_at", { ascending: true })
       .limit(1)

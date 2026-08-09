@@ -8,6 +8,7 @@ type PlayerLite = {
   name: string;
   avatar_color: string;
   avatar_shape: string;
+  avatar_url?: string | null;
 };
 
 export function PlayerPicker({ players }: { players: PlayerLite[] }) {
@@ -43,6 +44,7 @@ export function PlayerPicker({ players }: { players: PlayerLite[] }) {
             <AvatarBadge
               color={player.avatar_color}
               shape={player.avatar_shape}
+              avatarUrl={player.avatar_url}
               size={36}
             />
             <span className="font-quicksand text-base font-medium text-onjoo-green-900">

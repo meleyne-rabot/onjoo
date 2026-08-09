@@ -8,6 +8,7 @@ export type PresenceUser = {
   name: string;
   avatarColor: string;
   avatarShape: string;
+  avatarUrl?: string | null;
 };
 
 // Clé libre par jeu (ex. "matchPlayerId:roundIndex" pour Qwirkle/Skyjo/Flip7/

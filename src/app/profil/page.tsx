@@ -26,6 +26,7 @@ export default async function ProfilPage() {
             playerId={myPlayer.id}
             color={myPlayer.avatar_color}
             shape={myPlayer.avatar_shape}
+            avatarUrl={myPlayer.avatar_url}
             size={64}
           />
         ) : null}

@@ -27,7 +27,7 @@ export default async function NewMatchPage({
 
   const { data: leaguePlayers } = await supabase
     .from("league_players")
-    .select("players(id, name, avatar_color, avatar_shape)")
+    .select("players(id, name, avatar_color, avatar_shape, avatar_url)")
     .eq("league_id", league.id)
     .eq("archived", false)
     .order("created_at", { ascending: true });

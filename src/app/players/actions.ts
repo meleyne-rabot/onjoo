@@ -8,8 +8,7 @@ import { getLeagueAvatars } from "@/lib/player";
 import { randomAvatar } from "@/lib/avatar";
 
 // Crée un profil invité (durable, avec stats) — jamais lié à un compte.
-// Un vrai compte ne s'obtient que par lien d'invitation ou en rattachant
-// un profil déjà existant ailleurs (cf. addExistingPlayerToLeague).
+// Un vrai compte ne s'obtient que par lien d'invitation ou code de ligue.
 // Signature (prevState, formData) => utilisée avec useActionState côté
 // client pour remonter une erreur au lieu de la faire échouer en silence.
 export async function addPlayer(_prevState: { error: string | null }, formData: FormData) {
@@ -240,19 +239,4 @@ export async function searchExistingPlayers(query: string): Promise<ExistingPlay
     if (results.length >= 10) break;
   }
   return results;
-}
-
-export async function addExistingPlayerToLeague(sourcePlayerId: string) {
-  const league = await getActiveLeague();
-  if (!league) return { error: "Aucune ligue active." };
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("add_existing_player_to_league", {
-    p_target_league_id: league.id,
-    p_source_player_id: sourcePlayerId,
-  });
-  if (error) return { error: error.message };
-
-  revalidatePath("/players");
-  return { error: null };
 }

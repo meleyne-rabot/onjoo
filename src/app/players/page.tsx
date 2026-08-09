@@ -4,7 +4,6 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getActiveLeague } from "@/lib/league";
 import { InviteLink } from "@/components/InviteLink";
 import { PlayerRow } from "@/components/PlayerRow";
-import { AddExistingPlayer } from "@/components/AddExistingPlayer";
 import { AddPlayerForm } from "@/components/AddPlayerForm";
 
 export default async function PlayersPage() {
@@ -21,7 +20,7 @@ export default async function PlayersPage() {
   // sur league_players (par ligue), plus sur players (identité globale).
   const { data: leaguePlayers } = await supabase
     .from("league_players")
-    .select("archived, players(id, name, avatar_color, avatar_shape, is_guest, linked_user_id)")
+    .select("archived, players(id, name, avatar_color, avatar_shape, avatar_url, is_guest, linked_user_id)")
     .eq("league_id", league.id)
     .order("created_at", { ascending: true });
 
@@ -102,8 +101,6 @@ export default async function PlayersPage() {
             {league.join_code}
           </div>
         </div>
-
-        <AddExistingPlayer />
       </section>
 
       <Link href="/games" className="btn-primary text-center">

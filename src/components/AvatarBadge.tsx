@@ -1,14 +1,36 @@
+"use client";
+
+import { useState } from "react";
 import type { AvatarShape } from "@/lib/avatar";
 
+// Le badge couleur/forme généré reste toujours le repli : invités, comptes
+// sans photo, ou juste une URL cassée/expirée (onError repasse dessus).
 export function AvatarBadge({
   color,
   shape,
   size = 48,
+  avatarUrl,
 }: {
   color: string;
   shape: string;
   size?: number;
+  avatarUrl?: string | null;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (avatarUrl && !imageFailed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- photo de profil externe (Google...), domaine pas connu à l'avance
+      <img
+        src={avatarUrl}
+        alt=""
+        onError={() => setImageFailed(true)}
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   return (
     <div
       className="flex shrink-0 items-center justify-center rounded-full"

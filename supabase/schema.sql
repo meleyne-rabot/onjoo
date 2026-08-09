@@ -42,6 +42,10 @@ create table players (
   name text not null,
   avatar_color text not null,
   avatar_shape text not null,
+  -- Vraie photo (ex. photo de profil Google) : reste optionnelle, le
+  -- badge couleur/forme ci-dessus est toujours le repli par défaut
+  -- (invités, comptes sans photo).
+  avatar_url text,
   is_guest boolean not null default false,
   linked_user_id uuid references auth.users (id),
   created_at timestamptz not null default now(),

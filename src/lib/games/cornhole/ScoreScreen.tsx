@@ -24,6 +24,7 @@ type Participant = {
   name: string;
   avatarColor: string;
   avatarShape: string;
+  avatarUrl: string | null;
 };
 
 export function CornholeScoreScreen({
@@ -260,7 +261,7 @@ export function CornholeScoreScreen({
           <div className="flex flex-wrap justify-center gap-4">
             {sideViews[winningSide].members.map((p) => (
               <div key={p.id} className="flex flex-col items-center gap-1">
-                <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={44} />
+                <AvatarBadge color={p.avatarColor} shape={p.avatarShape} avatarUrl={p.avatarUrl} size={44} />
                 <span className="font-fredoka text-sm font-semibold text-onjoo-green-900">
                   {p.name}
                 </span>
@@ -284,6 +285,7 @@ export function CornholeScoreScreen({
                 name: side.members.map((p) => p.name).join(" & "),
                 avatarColor: side.members[0]?.avatarColor ?? "#999",
                 avatarShape: side.members[0]?.avatarShape ?? "circle",
+                avatarUrl: side.members[0]?.avatarUrl ?? null,
                 score: totals[index],
               }))}
             />
@@ -301,7 +303,7 @@ export function CornholeScoreScreen({
           <div className="flex items-center -space-x-2" title={`${others.length} connecté·s`}>
             {others.map((o) => (
               <div key={o.id} className="relative">
-                <AvatarBadge color={o.avatarColor} shape={o.avatarShape} size={26} />
+                <AvatarBadge color={o.avatarColor} shape={o.avatarShape} avatarUrl={o.avatarUrl} size={26} />
                 <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-onjoo-sage-500" />
               </div>
             ))}
@@ -334,7 +336,13 @@ export function CornholeScoreScreen({
               <div key={sideIndex} className="flex flex-col items-center gap-1 px-1 py-2.5">
                 <div className="flex -space-x-2">
                   {side.members.map((p) => (
-                    <AvatarBadge key={p.id} color={p.avatarColor} shape={p.avatarShape} size={32} />
+                    <AvatarBadge
+                      key={p.id}
+                      color={p.avatarColor}
+                      shape={p.avatarShape}
+                      avatarUrl={p.avatarUrl}
+                      size={32}
+                    />
                   ))}
                 </div>
                 <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
@@ -465,7 +473,7 @@ function TeamSetup({
             }
             className="card flex items-center gap-3"
           >
-            <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={32} />
+            <AvatarBadge color={p.avatarColor} shape={p.avatarShape} avatarUrl={p.avatarUrl} size={32} />
             <span className="flex-1 text-left font-quicksand text-base font-medium text-onjoo-green-900">
               {p.name}
             </span>
@@ -491,7 +499,7 @@ function TeamColumn({ label, members }: { label: string; members: Participant[] 
       <span className="font-fredoka text-sm font-bold text-onjoo-green-900">{label}</span>
       <div className="flex -space-x-2">
         {members.map((p) => (
-          <AvatarBadge key={p.id} color={p.avatarColor} shape={p.avatarShape} size={32} />
+          <AvatarBadge key={p.id} color={p.avatarColor} shape={p.avatarShape} avatarUrl={p.avatarUrl} size={32} />
         ))}
       </div>
       {members.length === 0 && <span className="font-quicksand text-xs text-[#999]">Vide</span>}

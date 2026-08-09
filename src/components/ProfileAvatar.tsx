@@ -10,11 +10,13 @@ export function ProfileAvatar({
   playerId,
   color,
   shape,
+  avatarUrl,
   size = 64,
 }: {
   playerId: string;
   color: string;
   shape: string;
+  avatarUrl?: string | null;
   size?: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -27,7 +29,7 @@ export function ProfileAvatar({
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} aria-label="Changer ton avatar">
-        <AvatarBadge color={color} shape={shape} size={size} />
+        <AvatarBadge color={color} shape={shape} avatarUrl={avatarUrl} size={size} />
       </button>
       {open && (
         <AvatarPicker

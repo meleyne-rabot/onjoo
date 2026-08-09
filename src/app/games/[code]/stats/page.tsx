@@ -6,7 +6,7 @@ import { gameMeta } from "@/lib/games/meta";
 import { GameIcon } from "@/components/GameIcon";
 import { AvatarBadge } from "@/components/AvatarBadge";
 
-type PlayerJoin = { name: string; avatar_color: string; avatar_shape: string };
+type PlayerJoin = { name: string; avatar_color: string; avatar_shape: string; avatar_url: string | null };
 type MatchPlayerRow = {
   id: string;
   final_score: number | null;
@@ -106,6 +106,7 @@ type LeaderRow = {
   name: string;
   avatarColor: string;
   avatarShape: string;
+  avatarUrl: string | null;
   wins: number;
   played: number;
   totalScore: number;
@@ -115,7 +116,7 @@ type LeaderRow = {
 function LeaderCard({ player, showQwirkles }: { player: LeaderRow; showQwirkles: boolean }) {
   return (
     <div className="card flex items-center gap-3 py-4">
-      <AvatarBadge color={player.avatarColor} shape={player.avatarShape} size={48} />
+      <AvatarBadge color={player.avatarColor} shape={player.avatarShape} avatarUrl={player.avatarUrl} size={48} />
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-1.5">
           <span className="font-fredoka text-lg font-bold text-onjoo-green-900">{player.name}</span>
@@ -185,7 +186,7 @@ export default async function GameStatsPage({
   const { data: matches } = await supabase
     .from("matches")
     .select(
-      "id, match_players(id, final_score, is_winner, player_id, guest_name, players(name, avatar_color, avatar_shape)), rounds(match_player_id, points, detail)",
+      "id, match_players(id, final_score, is_winner, player_id, guest_name, players(name, avatar_color, avatar_shape, avatar_url)), rounds(match_player_id, points, detail)",
     )
     .eq("league_id", league.id)
     .eq("game_code", code)
@@ -237,6 +238,7 @@ export default async function GameStatsPage({
         name: player.name,
         avatarColor: player.avatar_color,
         avatarShape: player.avatar_shape,
+        avatarUrl: player.avatar_url,
         wins: 0,
         played: 0,
         totalScore: 0,

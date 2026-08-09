@@ -39,6 +39,12 @@ export async function createMyPlayer(
   if (!name) return { error: "Pseudo manquant." };
 
   const avatar = randomAvatar(await getLeagueAvatars(league.id));
+  // Photo de profil Google si disponible — reste juste un plus, le badge
+  // couleur/forme généré ci-dessus est toujours calculé en repli.
+  const avatarUrl =
+    (user.user_metadata?.avatar_url as string | undefined) ??
+    (user.user_metadata?.picture as string | undefined) ??
+    null;
 
   // id généré côté client plutôt que RETURNING de l'insert : players_select
   // exige un rattachement league_players, qui n'existe pas encore pour
@@ -53,6 +59,7 @@ export async function createMyPlayer(
     name,
     avatar_color: avatar.color,
     avatar_shape: avatar.shape,
+    avatar_url: avatarUrl,
     is_guest: false,
     linked_user_id: user.id,
   });

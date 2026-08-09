@@ -5,7 +5,13 @@ import { createPortal } from "react-dom";
 import { AvatarBadge } from "@/components/AvatarBadge";
 import { useDragReorder } from "@/hooks/useDragReorder";
 
-type Entry = { id: string; name: string; avatarColor: string; avatarShape: string };
+type Entry = {
+  id: string;
+  name: string;
+  avatarColor: string;
+  avatarShape: string;
+  avatarUrl?: string | null;
+};
 
 // Ligne d'un joueur dans le popup, glissable verticalement pour réordonner
 // (poignée = toute la ligne). Pointer Events plutôt que le drag-and-drop
@@ -114,7 +120,7 @@ function PlayerOrderModal({
               onUpdateDrag={updateDrag}
               onEndDrag={endDrag}
             >
-              <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={32} />
+              <AvatarBadge color={p.avatarColor} shape={p.avatarShape} avatarUrl={p.avatarUrl} size={32} />
               <span className="flex-1 font-quicksand text-sm font-semibold text-onjoo-green-900">
                 {p.name}
               </span>

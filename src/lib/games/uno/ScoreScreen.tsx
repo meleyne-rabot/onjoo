@@ -26,6 +26,7 @@ type Participant = {
   name: string;
   avatarColor: string;
   avatarShape: string;
+  avatarUrl: string | null;
 };
 
 export function UnoScoreScreen({
@@ -204,7 +205,7 @@ export function UnoScoreScreen({
               .filter((p) => winners.includes(p.id))
               .map((p) => (
                 <div key={p.id} className="flex flex-col items-center gap-1">
-                  <AvatarBadge color={p.avatarColor} shape={p.avatarShape} size={44} />
+                  <AvatarBadge color={p.avatarColor} shape={p.avatarShape} avatarUrl={p.avatarUrl} size={44} />
                   <span className="font-fredoka text-sm font-semibold text-onjoo-green-900">
                     {p.name}
                   </span>
@@ -228,6 +229,7 @@ export function UnoScoreScreen({
                 name: p.name,
                 avatarColor: p.avatarColor,
                 avatarShape: p.avatarShape,
+                avatarUrl: p.avatarUrl,
                 score: totals[p.id] ?? 0,
               }))}
             />
@@ -239,7 +241,7 @@ export function UnoScoreScreen({
             <div className="flex items-center -space-x-2" title={`${others.length} connecté·s`}>
               {others.map((o) => (
                 <div key={o.id} className="relative">
-                  <AvatarBadge color={o.avatarColor} shape={o.avatarShape} size={26} />
+                  <AvatarBadge color={o.avatarColor} shape={o.avatarShape} avatarUrl={o.avatarUrl} size={26} />
                   <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-onjoo-sage-500" />
                 </div>
               ))}
@@ -295,7 +297,12 @@ export function UnoScoreScreen({
             </div>
             {orderedParticipants.map((participant) => (
               <div key={participant.id} className="flex flex-col items-center gap-1 px-1 py-2.5">
-                <AvatarBadge color={participant.avatarColor} shape={participant.avatarShape} size={32} />
+                <AvatarBadge
+                  color={participant.avatarColor}
+                  shape={participant.avatarShape}
+                  avatarUrl={participant.avatarUrl}
+                  size={32}
+                />
                 <span className="truncate font-quicksand text-sm font-bold text-onjoo-green-900">
                   {participant.name}
                 </span>

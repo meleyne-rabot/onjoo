@@ -17,6 +17,7 @@ type Player = {
   name: string;
   avatar_color: string;
   avatar_shape: string;
+  avatar_url?: string | null;
   is_guest: boolean;
 };
 
@@ -134,7 +135,12 @@ export function PlayerRow({
       onClick={() => setPickingAvatar(true)}
       aria-label={`Changer l'avatar de ${player.name}`}
     >
-      <AvatarBadge color={player.avatar_color} shape={player.avatar_shape} size={38} />
+      <AvatarBadge
+        color={player.avatar_color}
+        shape={player.avatar_shape}
+        avatarUrl={player.avatar_url}
+        size={38}
+      />
     </button>
   );
 

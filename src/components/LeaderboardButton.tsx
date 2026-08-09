@@ -8,6 +8,7 @@ export type LeaderboardEntry = {
   name: string;
   avatarColor: string;
   avatarShape: string;
+  avatarUrl?: string | null;
   score: number;
 };
 
@@ -89,7 +90,12 @@ export function LeaderboardButton({
                   <span className="w-7 shrink-0 text-center font-fredoka text-sm font-bold text-[#999]">
                     {entry.rank <= 3 ? MEDALS[entry.rank - 1] : `${entry.rank}e`}
                   </span>
-                  <AvatarBadge color={entry.avatarColor} shape={entry.avatarShape} size={36} />
+                  <AvatarBadge
+                    color={entry.avatarColor}
+                    shape={entry.avatarShape}
+                    avatarUrl={entry.avatarUrl}
+                    size={36}
+                  />
                   <span className="flex-1 truncate font-quicksand text-sm font-semibold text-onjoo-green-900">
                     {entry.name}
                   </span>
