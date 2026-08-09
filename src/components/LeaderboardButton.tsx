@@ -32,11 +32,23 @@ function rankEntries(entries: LeaderboardEntry[], lowerIsBetter: boolean) {
 export function LeaderboardButton({
   entries,
   lowerIsBetter = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   entries: LeaderboardEntry[];
   lowerIsBetter?: boolean;
+  // Contrôlable depuis le parent pour l'ouvrir automatiquement à la fin
+  // de la partie (cf. finishMatch) — état interne utilisé sinon.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  function setOpen(value: boolean) {
+    if (!isControlled) setInternalOpen(value);
+    onOpenChange?.(value);
+  }
 
   if (entries.length === 0) return null;
   const ranked = rankEntries(entries, lowerIsBetter);
@@ -92,7 +104,7 @@ export function LeaderboardButton({
               onClick={() => setOpen(false)}
               className="btn-secondary text-center"
             >
-              Retour à la saisie
+              Fermer
             </button>
           </div>
         </div>

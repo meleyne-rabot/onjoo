@@ -56,6 +56,7 @@ export function MolkkyScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const totalScrollRef = useRef<HTMLDivElement>(null);
@@ -143,6 +144,7 @@ export function MolkkyScoreScreen({
   }
 
   function finishMatch() {
+    if (!confirm("Terminer la partie ? Plus aucun score ne pourra être modifié.")) return;
     const finalWinners = determineWinners(rounds, participantIds);
     startTransition(async () => {
       await Promise.all(
@@ -162,6 +164,7 @@ export function MolkkyScoreScreen({
         .eq("id", matchId);
 
       setStatus("completed");
+      setLeaderboardOpen(true);
     });
   }
 
@@ -191,9 +194,6 @@ export function MolkkyScoreScreen({
               ))}
           </div>
           <span className="badge">{winnerPoints} pts</span>
-          <button onClick={() => router.push(`/games/${gameCode}`)} className="btn-primary mt-2">
-            Voir l&apos;historique
-          </button>
         </div>
       )}
 
@@ -201,8 +201,10 @@ export function MolkkyScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="molkky" gameName="Mölkky" />
           <RefreshButton />
-          {!isCompleted && rounds.length > 0 && (
+          {rounds.length > 0 && (
             <LeaderboardButton
+              open={leaderboardOpen}
+              onOpenChange={setLeaderboardOpen}
               entries={orderedParticipants.map((p) => ({
                 id: p.id,
                 name: p.name,

@@ -50,6 +50,7 @@ export function CornholeScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [targetScore, setTargetScore] = useState(DEFAULT_TARGET_SCORE);
   const [editingTarget, setEditingTarget] = useState(false);
   const [configuredSides, setConfiguredSides] = useState<Sides | null>(null);
@@ -187,6 +188,7 @@ export function CornholeScoreScreen({
 
   function finishMatch(totals: [number, number]) {
     if (!sides) return;
+    if (!confirm("Terminer la partie ? Plus aucun score ne pourra être modifié.")) return;
     const winningSide = determineWinningSide(totals, targetScore);
     startTransition(async () => {
       await Promise.all(
@@ -207,6 +209,7 @@ export function CornholeScoreScreen({
         .eq("id", matchId);
 
       setStatus("completed");
+      setLeaderboardOpen(true);
     });
   }
 
@@ -265,9 +268,6 @@ export function CornholeScoreScreen({
             ))}
           </div>
           <span className="badge">{totals[winningSide]} pts</span>
-          <button onClick={() => router.push(`/games/${gameCode}`)} className="btn-primary mt-2">
-            Voir l&apos;historique
-          </button>
         </div>
       )}
 
@@ -275,8 +275,10 @@ export function CornholeScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="cornhole" gameName="Cornhole" />
           <RefreshButton />
-          {!isCompleted && rounds.length > 0 && (
+          {rounds.length > 0 && (
             <LeaderboardButton
+              open={leaderboardOpen}
+              onOpenChange={setLeaderboardOpen}
               entries={sideViews.map((side, index) => ({
                 id: `side-${index}`,
                 name: side.members.map((p) => p.name).join(" & "),

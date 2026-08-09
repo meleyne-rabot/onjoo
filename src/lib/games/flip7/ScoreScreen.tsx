@@ -53,6 +53,7 @@ export function Flip7ScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   // Le conteneur qui défile horizontalement devient malgré lui aussi la
   // référence de défilement vertical (effet de bord CSS), ce qui casse
   // le sticky top/bottom de l'en-tête et du total s'ils sont dedans. On
@@ -149,6 +150,7 @@ export function Flip7ScoreScreen({
   }
 
   function finishMatch() {
+    if (!confirm("Terminer la partie ? Plus aucun score ne pourra être modifié.")) return;
     const finalWinners = determineWinners(totals);
     startTransition(async () => {
       await Promise.all(
@@ -168,6 +170,7 @@ export function Flip7ScoreScreen({
         .eq("id", matchId);
 
       setStatus("completed");
+      setLeaderboardOpen(true);
     });
   }
 
@@ -197,12 +200,6 @@ export function Flip7ScoreScreen({
               ))}
           </div>
           <span className="badge">{winnerPoints} pts</span>
-          <button
-            onClick={() => router.push(`/games/${gameCode}`)}
-            className="btn-primary mt-2"
-          >
-            Voir l&apos;historique
-          </button>
         </div>
       )}
 
@@ -210,8 +207,10 @@ export function Flip7ScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="flip7" gameName="Flip 7" />
           <RefreshButton />
-          {!isCompleted && rounds.length > 0 && (
+          {rounds.length > 0 && (
             <LeaderboardButton
+              open={leaderboardOpen}
+              onOpenChange={setLeaderboardOpen}
               entries={orderedParticipants.map((p) => ({
                 id: p.id,
                 name: p.name,

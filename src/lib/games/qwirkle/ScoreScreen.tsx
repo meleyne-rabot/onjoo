@@ -71,6 +71,7 @@ export function QwirkleScoreScreen({
   // terminée, pour l'afficher dans le popup de victoire.
   const [ranking, setRanking] = useState<MatchRanking | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   // Le conteneur qui défile horizontalement devient malgré lui aussi la
   // référence de défilement vertical (effet de bord CSS), ce qui casse
   // le sticky top/bottom de l'en-tête et du total s'ils sont dedans. On
@@ -224,6 +225,7 @@ export function QwirkleScoreScreen({
   }
 
   function finishMatch() {
+    if (!confirm("Terminer la partie ? Plus aucun score ne pourra être modifié.")) return;
     const finalWinners = determineWinners(displayTotals);
     startTransition(async () => {
       await Promise.all(
@@ -244,6 +246,7 @@ export function QwirkleScoreScreen({
         .eq("id", matchId);
 
       setStatus("completed");
+      setLeaderboardOpen(true);
 
       const rankingResult = await computeMatchRanking(
         supabase,
@@ -319,12 +322,6 @@ export function QwirkleScoreScreen({
               </div>
             </div>
           )}
-          <button
-            onClick={() => router.push(`/games/${gameCode}`)}
-            className="btn-primary mt-2"
-          >
-            Voir l&apos;historique
-          </button>
         </div>
       )}
 
@@ -332,8 +329,10 @@ export function QwirkleScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="qwirkle" gameName="Qwirkle" />
           <RefreshButton />
-          {!isCompleted && rounds.length > 0 && (
+          {rounds.length > 0 && (
             <LeaderboardButton
+              open={leaderboardOpen}
+              onOpenChange={setLeaderboardOpen}
               entries={orderedParticipants.map((p) => ({
                 id: p.id,
                 name: p.name,

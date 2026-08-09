@@ -80,6 +80,7 @@ export function AscenseurScoreScreen({
   // passés restent repliés pour ne pas devenir ingérable à 15+ tours.
   const [expandedRoundIndex, setExpandedRoundIndex] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   // Cf. Qwirkle/Skyjo/Flip 7/Yams : le conteneur à défilement horizontal
   // devient malgré lui aussi la référence de défilement vertical, donc
   // en-tête et total sont dans leurs propres conteneurs synchronisés.
@@ -264,6 +265,7 @@ export function AscenseurScoreScreen({
   }
 
   function finishMatch() {
+    if (!confirm("Terminer la partie ? Plus aucun score ne pourra être modifié.")) return;
     const finalWinners = determineWinners(totals);
     startTransition(async () => {
       await Promise.all(
@@ -283,6 +285,7 @@ export function AscenseurScoreScreen({
         .eq("id", matchId);
 
       setStatus("completed");
+      setLeaderboardOpen(true);
     });
   }
 
@@ -309,9 +312,6 @@ export function AscenseurScoreScreen({
               ))}
           </div>
           <span className="badge">{winnerPoints} pts</span>
-          <button onClick={() => router.push(`/games/${gameCode}`)} className="btn-primary mt-2">
-            Voir l&apos;historique
-          </button>
         </div>
       )}
 
@@ -319,8 +319,10 @@ export function AscenseurScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="ascenseur" gameName="Ascenseur" />
           <RefreshButton />
-          {!isCompleted && rounds.length > 0 && (
+          {rounds.length > 0 && (
             <LeaderboardButton
+              open={leaderboardOpen}
+              onOpenChange={setLeaderboardOpen}
               entries={orderedParticipants.map((p) => ({
                 id: p.id,
                 name: p.name,

@@ -53,6 +53,7 @@ export function Le5ScoreScreen({
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [status, setStatus] = useState(initialStatus);
   const [isPending, startTransition] = useTransition();
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   // Le conteneur qui défile horizontalement devient malgré lui aussi la
   // référence de défilement vertical (effet de bord CSS), ce qui casse
   // le sticky top/bottom de l'en-tête et du total s'ils sont dedans. On
@@ -168,6 +169,7 @@ export function Le5ScoreScreen({
         .eq("id", matchId);
 
       setStatus("completed");
+      setLeaderboardOpen(true);
     });
   }
 
@@ -210,9 +212,11 @@ export function Le5ScoreScreen({
         <div className="flex items-center gap-2">
           <RulesButton gameCode="le_5" gameName="Le 5" />
           <RefreshButton />
-          {!isCompleted && rounds.length > 0 && (
+          {rounds.length > 0 && (
             <LeaderboardButton
               lowerIsBetter
+              open={leaderboardOpen}
+              onOpenChange={setLeaderboardOpen}
               entries={orderedParticipants.map((p) => ({
                 id: p.id,
                 name: p.name,
