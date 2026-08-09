@@ -79,8 +79,8 @@ export default async function NewMatchPage({
             Joueurs de cette partie
           </h2>
           <p className="mb-3 font-quicksand text-sm text-[#777]">
-            Sélectionne des joueurs de la ligue, ou ajoute un joueur
-            ponctuel (juste pour cette partie, sans créer de fiche).
+            Sélectionne les joueurs de la ligue qui participent à cette
+            partie.
           </p>
           <PlayerPicker players={players ?? []} />
         </div>

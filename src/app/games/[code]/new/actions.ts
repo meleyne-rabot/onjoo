@@ -40,13 +40,8 @@ export async function addGuestPlayer(formData: FormData) {
 export async function createMatch(formData: FormData) {
   const gameCode = String(formData.get("game_code") ?? "");
   const playerIds = formData.getAll("player_ids").map(String);
-  const guestNames = formData
-    .getAll("guest_names")
-    .map((value) => String(value).trim())
-    .filter(Boolean);
 
-  const totalParticipants = playerIds.length + guestNames.length;
-  if (!gameCode || totalParticipants < 2) return;
+  if (!gameCode || playerIds.length < 2) return;
 
   const league = await getActiveLeague();
   if (!league) redirect("/leagues/new");
@@ -57,11 +52,14 @@ export async function createMatch(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Le joueur "ponctuel" (guest_names, sans fiche) a été retiré côté UI —
+  // le paramètre reste côté RPC pour ne pas casser sa signature, on lui
+  // passe juste toujours un tableau vide.
   const { data: matchId, error } = await supabase.rpc("create_match", {
     p_league_id: league.id,
     p_game_code: gameCode,
     p_player_ids: playerIds,
-    p_guest_names: guestNames,
+    p_guest_names: [],
   });
 
   if (error || !matchId) {
