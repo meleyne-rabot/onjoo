@@ -151,6 +151,7 @@ export function Le5ScoreScreen({
   }
 
   function finishMatch() {
+    if (!confirm("Terminer la partie ? Plus aucun score ne pourra être modifié.")) return;
     const finalWinners = determineWinners(totals);
     startTransition(async () => {
       await Promise.all(
