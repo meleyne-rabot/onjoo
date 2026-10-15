@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const ITEMS = [
   { href: "/games", label: "Nos jeux" },
+  { href: "/history", label: "Historique" },
   { href: "/players", label: "Joueurs" },
   { href: "/profil", label: "Profil" },
 ];

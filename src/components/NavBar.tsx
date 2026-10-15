@@ -57,6 +57,12 @@ export async function NavBar() {
               Nos jeux
             </Link>
             <Link
+              href="/history"
+              className="font-fredoka text-[15px] font-semibold text-onjoo-green-900 no-underline"
+            >
+              Historique
+            </Link>
+            <Link
               href="/players"
               className="font-fredoka text-[15px] font-semibold text-onjoo-green-900 no-underline"
             >
